@@ -83,11 +83,13 @@
             {% for redemption in code.getRedemptions() %}
                 <tr>
                     <td>
-                        {{ redemption.getRestaurant().getLink() | raw }}
+                        {# Gets the restaurant of redemption from the restaurant redemption pivot table #}
+                        {{ redemption.getRestaurant(redemption.id).getLink() | raw }}
                     </td>
 
                     <td>
-                        {{ redemption.dateCreated | date('Y-m-d H:i:s') }}
+                        {# Gets the date of redemption from the retaurant redemption pivot table #}
+                        {{ redemption.getDateCreated(redemption.id) | date('Y-m-d H:i:s') }}
                     </td>
 
                     <td class="nowrap" width="10%">
