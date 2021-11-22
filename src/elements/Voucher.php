@@ -39,6 +39,8 @@ class Voucher extends Purchasable
     const EVENT_BEFORE_CAPTURE_VOUCHER_SNAPSHOT = 'beforeCaptureVoucherSnapshot';
     const EVENT_AFTER_CAPTURE_VOUCHER_SNAPSHOT = 'afterCaptureVoucherSnapshot';
 
+    const MIN_CUSTOM_AMOUNT = 10;
+
 
     // Properties
     // =========================================================================
@@ -401,7 +403,7 @@ class Voucher extends Purchasable
             $voucherRecord = new VoucherRecord();
             $voucherRecord->id = $this->id;
         }
-        
+
         $voucherRecord->postDate = $this->postDate;
         $voucherRecord->expiryDate = $this->expiryDate;
         $voucherRecord->typeId = $this->typeId;
@@ -437,7 +439,7 @@ class Voucher extends Purchasable
     {
         return $this->id;
     }
-    
+
     public function getSnapshot(): array
     {
         $data = [];
@@ -526,6 +528,7 @@ class Voucher extends Purchasable
             $options = $lineItem->options;
 
             if (isset($options['amount'])) {
+                $options['amount'] = $options['amount'] < self::MIN_CUSTOM_AMOUNT ? self::MIN_CUSTOM_AMOUNT : $options['amount'];
                 $lineItem->price = $options['amount'];
                 $lineItem->salePrice = $options['amount'];
             }
@@ -618,7 +621,7 @@ class Voucher extends Purchasable
                 return ($this->$attribute ? '<span data-icon="check" title="' . Craft::t('gift-voucher', 'Yes') . '"></span>' : '');
             }
             default: {
-                return parent::tableAttributeHtml($attribute);                
+                return parent::tableAttributeHtml($attribute);
             }
         }
     }
