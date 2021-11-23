@@ -1,6 +1,7 @@
 <?php
 namespace verbb\giftvoucher\services;
 
+use verbb\giftvoucher\events\AfterGenerateCodesEvent;
 use verbb\giftvoucher\events\PopulateCodeFromLineItemEvent;
 use verbb\giftvoucher\GiftVoucher;
 use verbb\giftvoucher\adjusters\GiftVoucherAdjuster;
@@ -20,6 +21,7 @@ use craft\models\FieldLayout;
 use craft\commerce\elements\Order;
 use craft\commerce\models\LineItem;
 
+use yii\base\BaseObject;
 use yii\base\Component;
 use yii\base\Event;
 use yii\base\ModelEvent;
@@ -31,6 +33,8 @@ class CodesService extends Component
      * to give users a chance to modify the field layout
      */
     const EVENT_POPULATE_CODE_FROM_LINE_ITEM = 'populateCodeFromLineItem';
+
+    const EVENT_AFTER_GENERATE_CODES = 'afterGenerateCodes';
 
     const CONFIG_FIELDLAYOUT_KEY = 'giftVoucher.codes.fieldLayouts';
 
@@ -72,6 +76,9 @@ class CodesService extends Component
                 }
             }
 
+            // Handle adding the voucher codes as options for the lineitems
+            $success = GiftVoucher::getInstance()->getCodes()->codesToOptions($order);
+
             // Handle redemption of vouchers (when someone is using a code)
             $giftVoucherCodes = GiftVoucher::getInstance()->getCodeStorage()->getCodeKeys($order);
 
@@ -94,7 +101,7 @@ class CodesService extends Component
                             $redemption->codeId = $code->id;
                             $redemption->orderId = $order->id;
                             $redemption->amount = (float)$adjustment->amount * -1;
-                            
+
                             if (!GiftVoucher::$plugin->getRedemptions()->saveRedemption($redemption)) {
                                 $error = Craft::t('app', 'Unable to save redemption: “{errors}”.', [
                                     'errors' => Json::encode($redemption->getErrors()),
@@ -129,6 +136,18 @@ class CodesService extends Component
             ]);
 
             GiftVoucher::error($error);
+        }
+    }
+
+    /**
+     * Adds the codes generated to the respective line item as an option
+     * @param Order $order
+     */
+    public function codesToOptions(Order $order) {
+        if ($this->hasEventHandlers(self::EVENT_AFTER_GENERATE_CODES)) {
+            $this->trigger(self::EVENT_AFTER_GENERATE_CODES, new AfterGenerateCodesEvent([
+                'lineItems' => $order->lineItems,
+            ]));
         }
     }
 
@@ -249,12 +268,12 @@ class CodesService extends Component
             $code->voucherId = $purchasable->id;
             $this->populateCodeByLineItem($code, $lineItem);
             $code->setScenario(Element::SCENARIO_LIVE);
-            
+
             // if validation fails it means you can't create a code with the current settings
             if ($code->validate() === false) {
                 // invalidate it -> let users know about missing/wrong fields
                 $lineItem->addErrors($code->getErrors());
-                
+
                 $event->isValid = false;
             }
         }
