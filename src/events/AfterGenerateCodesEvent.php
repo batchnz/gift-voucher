@@ -8,6 +8,7 @@ class AfterGenerateCodesEvent extends Event
     // Properties
     // =========================================================================
 
+    public $order;
     public $lineItems;
 
 }

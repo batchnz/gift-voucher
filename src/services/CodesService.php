@@ -146,6 +146,7 @@ class CodesService extends Component
     public function codesToOptions(Order $order) {
         if ($this->hasEventHandlers(self::EVENT_AFTER_GENERATE_CODES)) {
             $this->trigger(self::EVENT_AFTER_GENERATE_CODES, new AfterGenerateCodesEvent([
+                'order' => $order,
                 'lineItems' => $order->lineItems,
             ]));
         }
