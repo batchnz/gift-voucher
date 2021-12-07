@@ -39,7 +39,7 @@ class Voucher extends Purchasable
     const EVENT_BEFORE_CAPTURE_VOUCHER_SNAPSHOT = 'beforeCaptureVoucherSnapshot';
     const EVENT_AFTER_CAPTURE_VOUCHER_SNAPSHOT = 'afterCaptureVoucherSnapshot';
 
-    const MIN_CUSTOM_AMOUNT = 10;
+    const MIN_CUSTOM_AMOUNT = 20;
 
 
     // Properties
