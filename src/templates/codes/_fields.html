@@ -75,8 +75,9 @@
         <thead>
             <tr>
                 <th scope="col">{{ 'Restaurant' | t('gift-voucher') }}</th>
-                <th scope="col">{{ 'Date' | t('gift-voucher') }}</th>
+                <th scope="col">{{ 'Date Redeemed' | t('gift-voucher') }}</th>
                 <th scope="col">{{ 'Amount Redeemed' | t('gift-voucher') }}</th>
+                <th scope="col">{{ 'Date Paid' | t('gift-voucher') }}</th>
             </tr>
         </thead>
         <tbody>
@@ -84,16 +85,26 @@
                 <tr>
                     <td>
                         {# Gets the restaurant of redemption from the restaurant redemption pivot table #}
-                        {{ redemption.getRestaurant(redemption.id).getLink() | raw }}
+                        {{ redemption.getRestaurant().getLink() | raw }}
                     </td>
 
                     <td>
                         {# Gets the date of redemption from the retaurant redemption pivot table #}
-                        {{ redemption.getDateCreated(redemption.id) | date('Y-m-d H:i:s') }}
+                        {{ redemption.getDateCreated() | date('Y-m-d H:i:s') }}
                     </td>
 
-                    <td class="nowrap" width="10%">
+                    <td>
                         ${{ redemption.amount }}
+                    </td>
+
+                    <td  class="nowrap">
+                        {# Gets the date of redemption paid from the retaurant redemption pivot table #}
+                        {{ forms.dateTimeField({
+                            format: 'Y-m-d H:i:s',
+                            id: redemption.id,
+                            name: "redemptions[" ~ redemption.id ~ "][datePaid]",
+                            value: redemption.getDatePaid(),
+                        }) }}
                     </td>
                 </tr>
             {% endfor %}

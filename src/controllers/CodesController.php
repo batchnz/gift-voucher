@@ -1,6 +1,9 @@
 <?php
 namespace verbb\giftvoucher\controllers;
 
+use Carbon\Carbon;
+use craft\fields\Date;
+use modules\voucherredemptionmodule\records\RedemptionRestaurant;
 use verbb\giftvoucher\GiftVoucher;
 use verbb\giftvoucher\elements\Code;
 use verbb\giftvoucher\elements\Voucher;
@@ -112,6 +115,20 @@ class CodesController extends Controller
         $code->originalAmount = $request->getBodyParam('originalAmount');
         $code->currentAmount = $request->getBodyParam('currentAmount');
         $code->expiryDate = (($date = $request->getParam('expiryDate')) !== false ? (DateTimeHelper::toDateTime($date) ?: null) : $code->expiryDate);
+        $redemptions = $request->getBodyParam('redemptions') ?: [];
+
+        foreach ($redemptions as $redemptionId => $redemption) {
+            $datePaid = ($date = DateTimeHelper::toDateTime($redemption['datePaid']))
+                ? Carbon::createFromTimestamp(
+                    $date->getTimestamp()
+                )->format('Y-m-d H:i:s')
+                : null;
+
+            RedemptionRestaurant::updateAll(
+                ['datePaid' => $datePaid],
+                ['redemptionId' => $redemptionId]
+            );
+        }
 
         if (!$code->originalAmount) {
             $code->originalAmount = $code->currentAmount;
@@ -196,7 +213,7 @@ class CodesController extends Controller
         $voucher = null;
 
         $voucherIds = $request->getBodyParam('voucher');
-        
+
         if (!empty($voucherIds) && is_array($voucherIds)) {
             $voucherId = reset($voucherIds);
             $voucher = GiftVoucher::$plugin->getVouchers()->getVoucherById($voucherId);
