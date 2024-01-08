@@ -514,7 +514,7 @@ class Voucher extends Purchasable
 
     public function hasFreeShipping(): bool
     {
-        return true;
+        return false;
     }
 
     public function getIsPromotable(): bool
