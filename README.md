@@ -1,5 +1,7 @@
 # Gift Voucher Plugin for Craft Commerce
 
+Updated Expiry Date option to be 36 months
+
 <img width="500" src="https://verbb.io/uploads/plugins/gift-voucher/_800x455_crop_center-center/gift-voucher-social-card.png">
 
 Gift Voucher is a Craft Commerce plugin allowing your customers to purchase digital gift vouchers, which can be redeemed by other customers during checkout for a discount on their order. Support for intelligent redemptions, PDF generation, customer-entered amounts, and lots more!
