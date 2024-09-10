@@ -80,11 +80,12 @@ class Code extends Element
         }
 
         $sources = [
-            '*' => [
+            [
+                'key' => '*',
                 'label' => Craft::t('gift-voucher', 'All voucher types'),
                 'criteria' => ['typeId' => $voucherTypeIds],
-                'defaultSort' => ['dateCreated', 'desc']
-            ]
+                'defaultSort' => ['dateCreated', 'desc'],
+            ],
         ];
 
         $sources[] = ['heading' => Craft::t('gift-voucher', 'Voucher Types')];
@@ -92,13 +93,13 @@ class Code extends Element
         foreach ($voucherTypes as $voucherType) {
             $key = 'voucherType:' . $voucherType->id;
 
-            $sources[$key] = [
+            $sources[] = [
                 'key' => $key,
                 'label' => $voucherType->name,
                 'data' => [
-                    'handle' => $voucherType->handle
+                    'handle' => $voucherType->handle,
                 ],
-                'criteria' => ['typeId' => $voucherType->id]
+                'criteria' => ['typeId' => $voucherType->id],
             ];
         }
 
@@ -146,10 +147,10 @@ class Code extends Element
                 ->where(['in', 'id', $sourceElementIds])
                 ->all();
 
-            return array(
+            return [
                 'elementType' => Voucher::class,
-                'map' => $map
-            );
+                'map' => $map,
+            ];
         }
 
         if ($handle === 'order') {
@@ -159,10 +160,10 @@ class Code extends Element
                 ->where(['in', 'id', $sourceElementIds])
                 ->all();
 
-            return array(
+            return [
                 'elementType' => Order::class,
-                'map' => $map
-            );
+                'map' => $map,
+            ];
         }
 
         return parent::eagerLoadingMap($sourceElements, $handle);
@@ -224,6 +225,15 @@ class Code extends Element
         return null;
     }
 
+    public function getOrderReference()
+    {
+        if ($order = $this->getOrder()) {
+            return $order->reference;
+        }
+
+        return null;
+    }
+
     public function getLineItem()
     {
         if ($this->_lineItem) {
@@ -250,7 +260,7 @@ class Code extends Element
 
     public function getVoucherName(): string
     {
-        return (string) $this->getVoucher();
+        return (string)$this->getVoucher();
     }
 
     public function getAmount()
@@ -292,7 +302,10 @@ class Code extends Element
             $codeRecord->lineItemId = $this->lineItemId;
             $codeRecord->orderId = $this->orderId;
             $codeRecord->voucherId = $this->voucherId;
-            $codeRecord->codeKey = $this->generateCodeKey();
+
+            // Generate a code key if not already set
+            $codeRecord->codeKey = $this->codeKey ?? $this->generateCodeKey();
+            
             // set the codeKey to the Code as well to use it directly
             $this->codeKey = $codeRecord->codeKey;
         }
@@ -377,7 +390,7 @@ class Code extends Element
 
     protected static function defineSearchableAttributes(): array
     {
-        return ['voucherName', 'codeKey'];
+        return ['voucherName', 'codeKey', 'orderReference'];
     }
 
     protected function tableAttributeHtml(string $attribute): string
@@ -389,6 +402,13 @@ class Code extends Element
                 }
 
                 return '-';
+            }
+            case 'voucherType': {
+                if ($this->getVoucherType()) {
+                    return '<a href="' . $this->getVoucherType()->getCpEditUrl() . '">' . $this->getVoucherType()->name . '</a>';
+                }
+
+                return '';
             }
             case 'orderLink': {
 

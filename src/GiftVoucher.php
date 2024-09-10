@@ -1,7 +1,9 @@
 <?php
 namespace verbb\giftvoucher;
 
+use verbb\giftvoucher\adjusters\GiftVoucherAdjusterNew;
 use verbb\giftvoucher\adjusters\GiftVoucherAdjuster;
+use verbb\giftvoucher\adjusters\GiftVoucherShippingAdjuster;
 use verbb\giftvoucher\assetbundles\GiftVoucherAsset;
 use verbb\giftvoucher\base\PluginTrait;
 use verbb\giftvoucher\elements\Code;
@@ -16,6 +18,10 @@ use verbb\giftvoucher\variables\GiftVoucherVariable;
 
 use Craft;
 use craft\base\Plugin;
+use craft\console\Application as ConsoleApplication;
+use craft\console\Controller as ConsoleController;
+use craft\console\controllers\ResaveController;
+use craft\events\DefineConsoleActionsEvent;
 use craft\events\DefineFieldLayoutFieldsEvent;
 use craft\events\PluginEvent;
 use craft\events\RebuildConfigEvent;
@@ -84,6 +90,7 @@ class GiftVoucher extends Plugin
         $this->_registerCraftEventListeners();
         $this->_registerProjectConfigEventListeners();
         $this->_defineFieldLayoutElements();
+        $this->_registerResaveCommand();
     }
 
     public function afterInstall()
@@ -266,13 +273,9 @@ class GiftVoucher extends Plugin
                 }
 
                 $event->types = $types;
-            } elseif ($settings->registerAdjuster === 'afterTax') {
+            } else if ($settings->registerAdjuster === 'afterTax') {
                 $event->types[] = GiftVoucherAdjuster::class;
             }
-        });
-
-        Event::on(OrderAdjustments::class, OrderAdjustments::EVENT_REGISTER_DISCOUNT_ADJUSTERS, function(RegisterComponentTypesEvent $event) {
-            $event->types[] = GiftVoucherAdjuster::class;
         });
     }
 
@@ -312,7 +315,7 @@ class GiftVoucher extends Plugin
         Event::on(Fields::class, Fields::EVENT_AFTER_DELETE_FIELD, [$voucherTypeService, 'pruneDeletedField']);
         Event::on(Sites::class, Sites::EVENT_AFTER_DELETE_SITE, [$voucherTypeService, 'pruneDeletedSite']);
 
-        Event::on(ProjectConfig::class, ProjectConfig::EVENT_REBUILD, function (RebuildConfigEvent $event) {
+        Event::on(ProjectConfig::class, ProjectConfig::EVENT_REBUILD, function(RebuildConfigEvent $event) {
             $event->config['giftVoucher'] = ProjectConfigData::rebuildProjectConfig();
         });
     }
@@ -351,6 +354,35 @@ class GiftVoucher extends Plugin
                     $e->fields[] = TitleField::class;
                     break;
             }
+        });
+    }
+
+    private function _registerResaveCommand()
+    {
+        if (!Craft::$app instanceof ConsoleApplication) {
+            return;
+        }
+
+        Event::on(ResaveController::class, ConsoleController::EVENT_DEFINE_ACTIONS, function(DefineConsoleActionsEvent $e) {
+            $e->actions['gift-voucher-vouchers'] = [
+                'action' => function(): int {
+                    $controller = Craft::$app->controller;
+                    $query = Voucher::find();
+                    return $controller->saveElements($query);
+                },
+                'options' => [],
+                'helpSummary' => 'Re-saves Gift Voucher vouchers.',
+            ];
+
+            $e->actions['gift-voucher-codes'] = [
+                'action' => function(): int {
+                    $controller = Craft::$app->controller;
+                    $query = Code::find();
+                    return $controller->saveElements($query);
+                },
+                'options' => [],
+                'helpSummary' => 'Re-saves Gift Voucher codes.',
+            ];
         });
     }
 

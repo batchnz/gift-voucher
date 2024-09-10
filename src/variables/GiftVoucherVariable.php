@@ -17,7 +17,6 @@ class GiftVoucherVariable
     // Public Methods
     // =========================================================================
 
-
     public function getPlugin(): GiftVoucher
     {
         return GiftVoucher::$plugin;
@@ -64,7 +63,7 @@ class GiftVoucherVariable
     public function isVoucher(LineItem $lineItem)
     {
         if ($lineItem->purchasable) {
-            return (bool) (get_class($lineItem->purchasable) === Voucher::class);
+            return (bool)(get_class($lineItem->purchasable) === Voucher::class);
         }
 
         return false;

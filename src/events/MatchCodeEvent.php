@@ -1,17 +1,17 @@
 <?php
 namespace verbb\giftvoucher\events;
 
+use craft\events\CancelableEvent;
+use verbb\giftvoucher\elements\Code;
 use yii\base\Event;
 
-class PopulateCodeFromLineItemEvent extends Event
+class MatchCodeEvent extends CancelableEvent
 {
     // Properties
     // =========================================================================
 
-    public $lineItem;
-    public $order;
+    /** @var Code */
     public $code;
-    public $customFields;
-    public $voucher;
-
+    public $codeKey;
+    public $error = '';
 }

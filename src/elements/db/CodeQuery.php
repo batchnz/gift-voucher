@@ -29,6 +29,8 @@ class CodeQuery extends ElementQuery
     public $currentAmount;
     public $expiryDate;
 
+    protected $defaultOrderBy = ['giftvoucher_codes.dateCreated' => SORT_DESC];
+
 
     // Public Methods
     // =========================================================================
@@ -63,7 +65,8 @@ class CodeQuery extends ElementQuery
         }
     }
 
-    public function voucher($value) {
+    public function voucher($value)
+    {
         if ($value instanceof Voucher) {
             $this->voucherId = $value->id;
         } else if ($value !== null) {
@@ -103,7 +106,7 @@ class CodeQuery extends ElementQuery
         }
 
         $this->dateCreated = ArrayHelper::toArray($this->dateCreated);
-        $this->dateCreated[] = '<'.$value;
+        $this->dateCreated[] = '<' . $value;
 
         return $this;
     }
@@ -115,7 +118,7 @@ class CodeQuery extends ElementQuery
         }
 
         $this->dateCreated = ArrayHelper::toArray($this->dateCreated);
-        $this->dateCreated[] = '>='.$value;
+        $this->dateCreated[] = '>=' . $value;
 
         return $this;
     }
@@ -161,7 +164,7 @@ class CodeQuery extends ElementQuery
 
         return $this;
     }
-    
+
 
     // Protected Methods
     // =========================================================================
@@ -212,10 +215,6 @@ class CodeQuery extends ElementQuery
             $this->subQuery->andWhere(Db::parseDateParam('giftvoucher_codes.expiryDate', $this->expiryDate));
         }
 
-        if (!$this->orderBy) {
-            $this->orderBy = ['giftvoucher_codes.dateCreated' => SORT_DESC];
-        }
-
         return parent::beforePrepare();
     }
 
@@ -224,11 +223,11 @@ class CodeQuery extends ElementQuery
         switch ($status) {
             case Code::STATUS_ENABLED:
                 return [
-                    'elements.enabled' => true
+                    'elements.enabled' => true,
                 ];
             case Code::STATUS_DISABLED:
                 return [
-                    'elements.disabled' => true
+                    'elements.disabled' => true,
                 ];
             default:
                 return parent::statusCondition($status);

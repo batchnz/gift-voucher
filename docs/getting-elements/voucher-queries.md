@@ -1,14 +1,13 @@
 # Voucher Queries
-
 You can fetch vouchers in your templates or PHP code using **voucher queries**.
 
 :::code
-```twig
+```twig Twig
 {# Create a new voucher query #}
 {% set myQuery = craft.giftVoucher.vouchers() %}
 ```
 
-```php
+```php PHP
 // Create a new voucher query
 $myQuery = \verbb\giftvoucher\elements\Voucher::find();
 ```
@@ -21,11 +20,10 @@ See Introduction to [Element Queries](https://docs.craftcms.com/v3/dev/element-q
 :::
 
 ## Example
-
 We can display vouchers for a given type by doing the following:
 
-1. Create an voucher query with `craft.giftVoucher.vouchers()`.
-2. Set the [type](#type) an [limit](#limit) parameters on it.
+1. Create a voucher query with `craft.giftVoucher.vouchers()`.
+2. Set the [type](#type) a [limit](#limit) parameters on it.
 3. Fetch all vouchers with `.all()` and output.
 4. Loop through the vouchers using a [for](https://twig.symfony.com/doc/2.x/tags/for.html) tag to output the contents.
 
@@ -45,7 +43,6 @@ We can display vouchers for a given type by doing the following:
 ```
 
 ## Parameters
-
 Voucher queries support the following parameters:
 
 <!-- BEGIN PARAMS -->
@@ -62,7 +59,7 @@ Possible values include:
 | a [DateTime](http://php.net/class.datetime) object | that were posted after the date represented by the object.
 
 ::: code
-```twig
+```twig Twig
 {# Fetch vouchers posted this month #}
 {% set firstDayOfMonth = date('first day of this month') %}
 
@@ -71,7 +68,7 @@ Possible values include:
     .all() %}
 ```
 
-```php
+```php PHP
 // Fetch vouchers posted this month
 $firstDayOfMonth = new \DateTime('first day of this month');
 
@@ -88,14 +85,14 @@ $vouchers = \verbb\giftvoucher\elements\Voucher::find()
 Clears out the [status()](https://docs.craftcms.com/api/v3/craft-elements-db-elementquery.html#method-status) and [enabledForSite()](https://docs.craftcms.com/api/v3/craft-elements-db-elementquery.html#method-enabledforsite) parameters.
 
 ::: code
-```twig
+```twig Twig
 {# Fetch all vouchers, regardless of status #}
 {% set vouchers = craft.giftVoucher.vouchers()
     .anyStatus()
     .all() %}
 ```
 
-```php
+```php PHP
 // Fetch all vouchers, regardless of status
 $vouchers = \verbb\giftvoucher\elements\Voucher::find()
     ->anyStatus()
@@ -110,14 +107,14 @@ $vouchers = \verbb\giftvoucher\elements\Voucher::find()
 Causes the query to return matching vouchers as arrays of data, rather than [Voucher](docs:developers/voucher) objects.
 
 ::: code
-```twig
+```twig Twig
 {# Fetch vouchers as arrays #}
 {% set vouchers = craft.giftVoucher.vouchers()
     .asArray()
     .all() %}
 ```
 
-```php
+```php PHP
 // Fetch vouchers as arrays
 $vouchers = \verbb\giftvoucher\elements\Voucher::find()
     ->asArray()
@@ -139,7 +136,7 @@ Possible values include:
 | a [DateTime](http://php.net/class.datetime) object | that were posted before the date represented by the object.
 
 ::: code
-```twig
+```twig Twig
 {# Fetch vouchers posted before this month #}
 {% set firstDayOfMonth = date('first day of this month') %}
 
@@ -148,7 +145,7 @@ Possible values include:
     .all() %}
 ```
 
-```php
+```php PHP
 // Fetch vouchers posted before this month
 $firstDayOfMonth = new \DateTime('first day of this month');
 
@@ -173,7 +170,7 @@ Possible values include:
 | `['and', '>= 2018-04-04', '< 2018-05-01']` | that were created between 2018-04-01 and 2018-05-01.
 
 ::: code
-```twig
+```twig Twig
 {# Fetch vouchers created last month #}
 {% set start = date('first day of last month') | atom %}
 {% set end = date('first day of this month') | atom %}
@@ -183,7 +180,7 @@ Possible values include:
     .all() %}
 ```
 
-```php
+```php PHP
 // Fetch vouchers created last month
 $start = new \DateTime('first day of next month')->format(\DateTime::ATOM);
 $end = new \DateTime('first day of this month')->format(\DateTime::ATOM);
@@ -209,7 +206,7 @@ Possible values include:
 | `['and', '>= 2018-04-04', '< 2018-05-01']` | that were updated between 2018-04-01 and 2018-05-01.
 
 ::: code
-```twig
+```twig Twig
 {# Fetch vouchers updated in the last week #}
 {% set lastWeek = date('1 week ago')|atom %}
 
@@ -218,7 +215,7 @@ Possible values include:
     .all() %}
 ```
 
-```php
+```php PHP
 // Fetch vouchers updated in the last week
 $lastWeek = new \DateTime('1 week ago')->format(\DateTime::ATOM);
 
@@ -235,7 +232,7 @@ $vouchers = \verbb\giftvoucher\elements\Voucher::find()
 Causes the query results to be returned in the order specified by [id](#id).
 
 ::: code
-```twig
+```twig Twig
 {# Fetch vouchers in a specific order #}
 {% set vouchers = craft.giftVoucher.vouchers()
     .id([1, 2, 3, 4, 5])
@@ -243,7 +240,7 @@ Causes the query results to be returned in the order specified by [id](#id).
     .all() %}
 ```
 
-```php
+```php PHP
 // Fetch vouchers in a specific order
 $vouchers = \verbb\giftvoucher\elements\Voucher::find()
     ->id([1, 2, 3, 4, 5])
@@ -268,14 +265,14 @@ Possible values include:
 | `['not', 1, 2]` | not with an ID of 1 or 2.
 
 ::: code
-```twig
+```twig Twig
 {# Fetch the voucher by its ID #}
 {% set voucher = craft.giftVoucher.vouchers()
     .id(1)
     .one() %}
 ```
 
-```php
+```php PHP
 // Fetch the voucher by its ID
 $voucher = \verbb\giftvoucher\elements\Voucher::find()
     ->id(1)
@@ -294,14 +291,14 @@ This can be combined with [fixedOrder](#fixedorder) if you want the results to b
 Causes the query results to be returned in reverse order.
 
 ::: code
-```twig
+```twig Twig
 {# Fetch vouchers in reverse #}
 {% set vouchers = craft.giftVoucher.vouchers()
     .inReverse()
     .all() %}
 ```
 
-```php
+```php PHP
 // Fetch vouchers in reverse
 $vouchers = \verbb\giftvoucher\elements\Voucher::find()
     ->inReverse()
@@ -316,14 +313,14 @@ $vouchers = \verbb\giftvoucher\elements\Voucher::find()
 Determines the number of vouchers that should be returned.
 
 ::: code
-```twig
+```twig Twig
 {# Fetch up to 10 vouchers  #}
 {% set vouchers = craft.giftVoucher.vouchers()
     .limit(10)
     .all() %}
 ```
 
-```php
+```php PHP
 // Fetch up to 10 vouchers
 $vouchers = \verbb\giftvoucher\elements\Voucher::find()
     ->limit(10)
@@ -338,14 +335,14 @@ $vouchers = \verbb\giftvoucher\elements\Voucher::find()
 Determines how many vouchers should be skipped in the results.
 
 ::: code
-```twig
+```twig Twig
 {# Fetch all vouchers except for the first 3 #}
 {% set vouchers = craft.giftVoucher.vouchers()
     .offset(3)
     .all() %}
 ```
 
-```php
+```php PHP
 // Fetch all vouchers except for the first 3
 $vouchers = \verbb\giftvoucher\elements\Voucher::find()
     ->offset(3)
@@ -360,14 +357,14 @@ $vouchers = \verbb\giftvoucher\elements\Voucher::find()
 Determines the order that the vouchers should be returned in.
 
 ::: code
-```twig
+```twig Twig
 {# Fetch all vouchers in order of date created #}
 {% set vouchers = craft.giftVoucher.vouchers()
     .orderBy('elements.dateCreated asc')
     .all() %}
 ```
 
-```php
+```php PHP
 // Fetch all vouchers in order of date created
 $vouchers = \verbb\giftvoucher\elements\Voucher::find()
     ->orderBy('elements.dateCreated asc')
@@ -398,14 +395,14 @@ Narrows the query results to only vouchers that are related to certain other ele
 See [Relations](https://docs.craftcms.com/v3/relations.html) for a full explanation of how to work with this parameter.
 
 ::: code
-```twig
+```twig Twig
 {# Fetch all vouchers that are related to myCategory #}
 {% set vouchers = craft.giftVoucher.vouchers()
     .relatedTo(myCategory)
     .all() %}
 ```
 
-```php
+```php PHP
 // Fetch all vouchers that are related to $myCategory
 $vouchers = \verbb\giftvoucher\elements\Voucher::find()
     ->relatedTo($myCategory)
@@ -422,7 +419,7 @@ Narrows the query results to only vouchers that match a search query.
 See [Searching](https://docs.craftcms.com/v3/searching.html) for a full explanation of how to work with this parameter.
 
 ::: code
-```twig
+```twig Twig
 {# Get the search query from the 'q' query string param #}
 {% set searchQuery = craft.request.getQueryParam('q') %}
 
@@ -432,9 +429,9 @@ See [Searching](https://docs.craftcms.com/v3/searching.html) for a full explanat
     .all() %}
 ```
 
-```php
+```php PHP
 // Get the search query from the 'q' query string param
-$searchQuery = \Craft::$app->request->getQueryParam('q');
+$searchQuery = \Craft::$app->getRequest()->getQueryParam('q');
 
 // Fetch all vouchers that match the search query
 $vouchers = \verbb\giftvoucher\elements\Voucher::find()
@@ -462,15 +459,15 @@ Possible values include:
 | `['not', '*foo*', '*bar*']` | with a SKU that doesn’t contain `foo` or `bar`.
 
 ::: code
-```twig
+```twig Twig
 {# Fetch the voucher with an sku #}
 {% set voucher = craft.giftVoucher.vouchers()
     .sku('some-sku')
     .one() %}
 ```
 
-```php
-// Fetch the voucher with an sku
+```php PHP
+// Fetch the voucher with a sku
 $voucher = \verbb\giftvoucher\elements\Voucher::find()
     ->sku('some-sku')
     ->one();
@@ -496,7 +493,7 @@ Possible values include:
 | `['not', '*foo*', '*bar*']` | with a slug that doesn’t contain `foo` or `bar`.
 
 ::: code
-```twig
+```twig Twig
 {# Get the requested voucher slug from the URL #}
 {% set requestedSlug = craft.app.request.getSegment(3) %}
 
@@ -506,9 +503,9 @@ Possible values include:
     .one() %}
 ```
 
-```php
+```php PHP
 // Get the requested voucher slug from the URL
-$requestedSlug = \Craft::$app->request->getSegment(3);
+$requestedSlug = \Craft::$app->getRequest()->getSegment(3);
 
 // Fetch the voucher with that slug
 $voucher = \verbb\giftvoucher\elements\Voucher::find()
@@ -534,14 +531,14 @@ Possible values include:
 | `['live', 'pending']` | that are live or pending.
 
 ::: code
-```twig
+```twig Twig
 {# Fetch disabled vouchers #}
-{% set vouchers = {twig-function}
+{% set vouchers = craft.giftVoucher.vouchers()
     .status('disabled')
     .all() %}
 ```
 
-```php
+```php PHP
 // Fetch disabled vouchers
 $vouchers = \verbb\giftvoucher\elements\Voucher::find()
     ->status('disabled')
@@ -568,14 +565,14 @@ Possible values include:
 | `['not', '*Foo*', '*Bar*']` | with a title that doesn’t contain `Foo` or `Bar`.
 
 ::: code
-```twig
+```twig Twig
 {# Fetch vouchers with a title that contains "Foo" #}
 {% set vouchers = craft.giftVoucher.vouchers()
     .title('*Foo*')
     .all() %}
 ```
 
-```php
+```php PHP
 // Fetch vouchers with a title that contains "Foo"
 $vouchers = \verbb\giftvoucher\elements\Voucher::find()
     ->title('*Foo*')
@@ -597,17 +594,17 @@ Possible values include:
 | `'not foo'` | not of a type with a handle of `foo`.
 | `['foo', 'bar']` | of a type with a handle of `foo` or `bar`.
 | `['not', 'foo', 'bar']` | not of a type with a handle of `foo` or `bar`.
-| an [VoucherType](docs:developers/voucher-type) object | of a type represented by the object.
+| a Voucher Type object | of a type represented by the object.
 
 ::: code
-```twig
+```twig Twig
 {# Fetch vouchers with a Foo voucher type #}
 {% set vouchers = craft.giftVoucher.vouchers()
     .type('foo')
     .all() %}
 ```
 
-```php
+```php PHP
 // Fetch vouchers with a Foo voucher type
 $vouchers = \verbb\giftvoucher\elements\Voucher::find()
     ->type('foo')
@@ -631,14 +628,14 @@ Possible values include:
 | `['not', 1, 2]` | not of a type with an ID of 1 or 2.
 
 ::: code
-```twig
+```twig Twig
 {# Fetch vouchers of the voucher type with an ID of 1 #}
 {% set vouchers = craft.giftVoucher.vouchers()
     .typeId(1)
     .all() %}
 ```
 
-```php
+```php PHP
 // Fetch vouchers of the voucher type with an ID of 1
 $vouchers = \verbb\giftvoucher\elements\Voucher::find()
     ->typeId(1)
@@ -653,14 +650,14 @@ $vouchers = \verbb\giftvoucher\elements\Voucher::find()
 Narrows the query results based on the vouchers’ UIDs.
 
 ::: code
-```twig
+```twig Twig
 {# Fetch the voucher by its UID #}
 {% set voucher = craft.giftVoucher.vouchers()
     .uid('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')
     .one() %}
 ```
 
-```php
+```php PHP
 // Fetch the voucher by its UID
 $voucher = \verbb\giftvoucher\elements\Voucher::find()
     ->uid('xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx')
@@ -687,7 +684,7 @@ Possible values include:
 | `['not', '*foo*', '*bar*']` | with a URI that doesn’t contain `foo` or `bar`.
 
 ::: code
-```twig
+```twig Twig
 {# Get the requested URI #}
 {% set requestedUri = craft.app.request.getPathInfo() %}
 
@@ -697,9 +694,9 @@ Possible values include:
     .one() %}
 ```
 
-```php
+```php PHP
 // Get the requested URI
-$requestedUri = \Craft::$app->request->getPathInfo();
+$requestedUri = \Craft::$app->getRequest()->getPathInfo();
 
 // Fetch the voucher with that URI
 $voucher = \verbb\giftvoucher\elements\Voucher::find()
@@ -717,14 +714,14 @@ Causes the query to return matching vouchers eager-loaded with related elements.
 See [Eager-Loading Elements](https://docs.craftcms.com/v3/dev/eager-loading-elements.html) for a full explanation of how to work with this parameter.
 
 ::: code
-```twig
+```twig Twig
 {# Fetch vouchers eager-loaded with the "Related" field’s relations #}
 {% set vouchers = craft.giftVoucher.vouchers()
     .with(['related'])
     .all() %}
 ```
 
-```php
+```php PHP
 // Fetch vouchers eager-loaded with the "Related" field’s relations
 $vouchers = \verbb\giftvoucher\elements\Voucher::find()
     ->with(['related'])

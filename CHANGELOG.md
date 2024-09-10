@@ -1,5 +1,106 @@
 # Changelog
 
+## 2.7.6 - 2024-03-08
+
+### Added
+- Add support for programatically setting a code’s `codeKey`.
+
+### Fixed
+- Fix order of operations when uninstalling the plugin.
+
+## 2.7.5 - 2023-12-08
+
+### Added
+- Add currently-applied voucher codes to manage for modal when editing an order in the control panel.
+
+### Changed
+- Voucher modal now shows message instead of refreshing, ensuring unsaved changes to the order aren’t discarded.
+
+### Fixed
+- Fix “enter” key not submitting the gift voucher modal when editing an order in the control panel.
+
+## 2.7.4 - 2023-10-08
+
+### Fixed
+- Fix an issue when creating new sites and not propagating voucher types correctly.
+
+## 2.7.3 - 2022-10-23
+
+### Added
+- Add tabs for codes not working correctly in the control panel.
+
+## 2.7.2 - 2022-08-25
+
+### Added
+- Add `dateCreated`, `dateUpdated` and `uid` to Redemption model.
+
+### Fixed
+- Fix redemptions table showing the order date instead of the date of the redemption date.
+- Fix an error when viewing a redemption without and order in the control panel.
+
+## 2.7.1 - 2022-06-10
+
+### Fixed
+- Fix an error when trying to redeem a voucher code, when the linked voucher has been deleted.
+- Fix being unable to modify a code’s voucher in the control panel.
+- Fix Swiftmailer dropping message after attaching voucher PDF.
+- Fix an error in Postgres when resaving a voucher code.
+- Fix PDF generation URLs not being correct in headless environments.
+
+## 2.7.0 - 2021-12-12
+
+### Added
+- Added `resave/gift-voucher-codes` and `resave/gift-voucher-vouchers` console commands.
+- Added `orderReference` to the searchable attributes for voucher codes.
+
+### Changed
+- Reverted adjuster behaviour back to 2.5.x version, fixing many issues.
+- Voucher adjusters not use a `voucher` type instead of `discount` to fix many issues.
+
+### Fixed
+- Fix an error when clicking "New voucher" when adding a voucher in the Bulk Generate Codes function.
+- Fix a hard-error shown when saving a voucher with no price.
+- Fix "Voucher Type" column not displaying correctly for the codes element index.
+- Fix "All voucher types" not appearing in the control panel for codes element index.
+
+## 2.6.3 - 2021-10-30
+
+### Changed
+- Extend voucher expiry from 24 to 36 months.
+
+## 2.6.2 - 2021-10-06
+
+### Fixed
+- Fix when attaching the PDF to an email, clears the body content of the email.
+- Fix an override warning message not showing for the `attachPdfToEmails` config setting in the control panel.
+- Fix debug console output in the control panel.
+
+## 2.6.1 - 2021-08-23
+
+### Fixed
+- Fix shipping discount being applied when total amount already redeemed (introduced in 2.6.0).
+
+## 2.6.0 - 2021-08-22
+
+### Changed
+- Major refactor of discount adjuster, which is used when applying a voucher code on an order. This change fixes a few issues with Commerce 3.4+.
+- Discounts are now spread over all line items, when applying a voucher code. This is inline with Craft Commerce's discount adjusters are handled.
+- Now requires Craft Commerce 3.4+.
+
+### Fixed
+- Fixed duplicate discounts being applied to orders when redeeming a code, in some instances.
+- Fixed some cases when tax on a shipping method was being charged, despite the discount being applied to a shipping methods' cost.
+
+## 2.5.10 - 2021-07-08
+
+### Added
+- Add `EVENT_BEFORE_MATCH_CODE` event for adding custom code matching logic. (thanks @superbigco).
+
+### Fixed
+- Fix an error when generating PDFs and custom fonts, where the temporary folder isn’t writable (or created).
+- Ensure we register the discount adjuster via `EVENT_REGISTER_DISCOUNT_ADJUSTERS` to fix some compatibility issues.
+- Fix vouchers being applied to new orders, when creating new orders in the control panel.
+
 ## 2.5.9 - 2021-03-29
 
 ### Added

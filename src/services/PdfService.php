@@ -38,34 +38,19 @@ class PdfService extends Component
 
     public function getPdfUrl(Order $order, LineItem $lineItem = null, $option = null)
     {
-        $url = null;
-
-        try {
-            $path = "gift-voucher/downloads/pdf?number={$order->number}" . ($option ? "&option={$option}" : '') . ($lineItem ? "&lineItemId={$lineItem->id}" : '');
-            $path = Craft::$app->getConfig()->getGeneral()->actionTrigger . '/' . trim($path, '/');
-            $url = UrlHelper::siteUrl($path);
-        } catch (\Exception $e) {
-            Craft::error($e->getMessage());
-            return null;
-        }
-
-        return $url;
+        return UrlHelper::actionUrl('gift-voucher/downloads/pdf', array_filter([
+            'number' => $order->number ?? null,
+            'option' => $option ?? null,
+            'lineItemId' => $lineItem->id ?? null,
+        ]));
     }
 
     public function getPdfUrlForCode($code, $option = null)
     {
-        $url = null;
-
-        try {
-            $path = "gift-voucher/downloads/pdf?codeId={$code->id}" . ($option ? "&option={$option}" : '');
-            $path = Craft::$app->getConfig()->getGeneral()->actionTrigger . '/' . trim($path, '/');
-            $url = UrlHelper::siteUrl($path);
-        } catch (\Exception $e) {
-            Craft::error($e->getMessage());
-            return null;
-        }
-
-        return $url;
+        return UrlHelper::actionUrl('gift-voucher/downloads/pdf', array_filter([
+            'codeId' => $code->id ?? null,
+            'option' => $option ?? null,
+        ]));
     }
 
     public function renderPdf($codes, $order = [], $lineItem = null, $option = '', $templatePath = null): string
@@ -154,9 +139,9 @@ class PdfService extends Component
         $dompdfFontCache = $pathService->getCachePath() . DIRECTORY_SEPARATOR . 'gift_voucher_dompdf';
         $dompdfLogFile = $pathService->getLogPath() . DIRECTORY_SEPARATOR . 'gift_voucher_dompdf.htm';
 
-        // Should throw an error if not writable
-        FileHelper::isWritable($dompdfTempDir);
-        FileHelper::isWritable($dompdfLogFile);
+        // Ensure directories are created
+        FileHelper::createDirectory($dompdfTempDir);
+        FileHelper::createDirectory($dompdfFontCache);
 
         if (!FileHelper::isWritable($dompdfLogFile)) {
             throw new ErrorException("Unable to write to file: $dompdfLogFile");
