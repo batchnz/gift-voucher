@@ -4,59 +4,43 @@ namespace verbb\giftvoucher\elements;
 use verbb\giftvoucher\GiftVoucher;
 use verbb\giftvoucher\elements\db\CodeQuery;
 use verbb\giftvoucher\events\GenerateCodeEvent;
-use verbb\giftvoucher\records\CodeRecord;
+use verbb\giftvoucher\records\Code as CodeRecord;
 
 use Craft;
 use craft\base\Element;
+use craft\base\ElementInterface;
 use craft\db\Query;
+use craft\elements\User;
 use craft\elements\db\ElementQueryInterface;
 use craft\elements\actions\Delete;
 use craft\helpers\ArrayHelper;
 use craft\helpers\DateTimeHelper;
 use craft\helpers\UrlHelper;
+use craft\models\FieldLayout;
 use craft\validators\DateTimeValidator;
 
 use craft\commerce\Plugin as Commerce;
 use craft\commerce\elements\Order;
+use craft\commerce\models\LineItem;
 
 use yii\base\InvalidConfigException;
+
+use DateTime;
 
 class Code extends Element
 {
     // Constants
     // =========================================================================
 
-    const EVENT_GENERATE_CODE_KEY = 'beforeGenerateCodeKey';
+    public const EVENT_GENERATE_CODE_KEY = 'beforeGenerateCodeKey';
 
 
-    // Properties
+    // Static Methods
     // =========================================================================
 
-    public $id;
-    public $voucherId;
-    public $orderId;
-    public $lineItemId;
-    public $codeKey;
-    public $originalAmount;
-    public $currentAmount;
-    public $expiryDate;
-
-    private $_voucher;
-    private $_order;
-    private $_lineItem;
-
-
-    // Public Methods
-    // =========================================================================
-
-    public function __toString()
+    public static function trackChanges(): bool
     {
-        return (string)$this->codeKey;
-    }
-
-    public function getName()
-    {
-        return Craft::t('gift-voucher', 'Code');
+        return true;
     }
 
     public static function hasContent(): bool
@@ -69,9 +53,14 @@ class Code extends Element
         return true;
     }
 
+    public static function find(): CodeQuery
+    {
+        return new CodeQuery(static::class);
+    }
+
     public static function defineSources(string $context = null): array
     {
-        $voucherTypes = GiftVoucher::getInstance()->getVoucherTypes()->getAllVoucherTypes();
+        $voucherTypes = GiftVoucher::$plugin->getVoucherTypes()->getAllVoucherTypes();
 
         $voucherTypeIds = [];
 
@@ -80,11 +69,12 @@ class Code extends Element
         }
 
         $sources = [
-            '*' => [
+            [
+                'key' => '*',
                 'label' => Craft::t('gift-voucher', 'All voucher types'),
                 'criteria' => ['typeId' => $voucherTypeIds],
-                'defaultSort' => ['dateCreated', 'desc']
-            ]
+                'defaultSort' => ['dateCreated', 'desc'],
+            ],
         ];
 
         $sources[] = ['heading' => Craft::t('gift-voucher', 'Voucher Types')];
@@ -92,17 +82,50 @@ class Code extends Element
         foreach ($voucherTypes as $voucherType) {
             $key = 'voucherType:' . $voucherType->id;
 
-            $sources[$key] = [
+            $sources[] = [
                 'key' => $key,
                 'label' => $voucherType->name,
                 'data' => [
-                    'handle' => $voucherType->handle
+                    'handle' => $voucherType->handle,
                 ],
-                'criteria' => ['typeId' => $voucherType->id]
+                'criteria' => ['typeId' => $voucherType->id],
             ];
         }
 
         return $sources;
+    }
+
+    public static function eagerLoadingMap(array $sourceElements, string $handle): array|null|false
+    {
+        $sourceElementIds = ArrayHelper::getColumn($sourceElements, 'id');
+
+        if ($handle === 'voucher') {
+            $map = (new Query())
+                ->select('id as source, voucherId as target')
+                ->from('{{%giftvoucher_codes}}')
+                ->where(['in', 'id', $sourceElementIds])
+                ->all();
+
+            return [
+                'elementType' => Voucher::class,
+                'map' => $map,
+            ];
+        }
+
+        if ($handle === 'order') {
+            $map = (new Query())
+                ->select('id as source, orderId as target')
+                ->from('{{%giftvoucher_codes}}')
+                ->where(['in', 'id', $sourceElementIds])
+                ->all();
+
+            return [
+                'elementType' => Order::class,
+                'map' => $map,
+            ];
+        }
+
+        return parent::eagerLoadingMap($sourceElements, $handle);
     }
 
     protected static function defineActions(string $source = null): array
@@ -116,230 +139,6 @@ class Code extends Element
         ]);
 
         return $actions;
-    }
-
-    public function setEagerLoadedElements(string $handle, array $elements)
-    {
-        if ($handle === 'voucher') {
-            $this->_voucher = $elements[0] ?? null;
-
-            return;
-        }
-
-        if ($handle === 'order') {
-            $this->_order = $elements[0] ?? null;
-
-            return;
-        }
-
-        parent::setEagerLoadedElements($handle, $elements);
-    }
-
-    public static function eagerLoadingMap(array $sourceElements, string $handle)
-    {
-        $sourceElementIds = ArrayHelper::getColumn($sourceElements, 'id');
-
-        if ($handle === 'voucher') {
-            $map = (new Query())
-                ->select('id as source, voucherId as target')
-                ->from('{{%giftvoucher_codes}}')
-                ->where(['in', 'id', $sourceElementIds])
-                ->all();
-
-            return array(
-                'elementType' => Voucher::class,
-                'map' => $map
-            );
-        }
-
-        if ($handle === 'order') {
-            $map = (new Query())
-                ->select('id as source, orderId as target')
-                ->from('{{%giftvoucher_codes}}')
-                ->where(['in', 'id', $sourceElementIds])
-                ->all();
-
-            return array(
-                'elementType' => Order::class,
-                'map' => $map
-            );
-        }
-
-        return parent::eagerLoadingMap($sourceElements, $handle);
-    }
-
-    public function rules(): array
-    {
-        $rules = parent::rules();
-
-        $rules[] = [['voucherId'], 'required'];
-        $rules[] = [['expiryDate'], DateTimeValidator::class];
-
-        return $rules;
-    }
-
-    public static function find(): ElementQueryInterface
-    {
-        return new CodeQuery(static::class);
-    }
-
-    public function datetimeAttributes(): array
-    {
-        $attributes = parent::datetimeAttributes();
-        $attributes[] = 'expiryDate';
-
-        return $attributes;
-    }
-
-    public function getCpEditUrl(): string
-    {
-        return UrlHelper::cpUrl('gift-voucher/codes/' . $this->id);
-    }
-
-    public function getVoucher()
-    {
-        if ($this->_voucher) {
-            return $this->_voucher;
-        }
-
-        if ($this->voucherId) {
-            // find disabled vouchers as well, this is only for the CP
-            $this->_voucher = Voucher::find()->id($this->voucherId)->anyStatus()->one();
-            return $this->_voucher;
-        }
-
-        return null;
-    }
-
-    public function getOrder()
-    {
-        if ($this->_order) {
-            return $this->_order;
-        }
-
-        if ($this->orderId) {
-            return $this->_order = Commerce::getInstance()->getOrders()->getOrderById($this->orderId);
-        }
-
-        return null;
-    }
-
-    public function getLineItem()
-    {
-        if ($this->_lineItem) {
-            return $this->_lineItem;
-        }
-
-        if ($this->lineItemId) {
-            return $this->_lineItem = Commerce::getInstance()->getLineItems()->getLineItemById($this->lineItemId);
-        }
-
-        return null;
-    }
-
-    public function getVoucherType()
-    {
-        $voucher = $this->getVoucher();
-
-        if ($voucher) {
-            return $voucher->getType();
-        }
-
-        return null;
-    }
-
-    public function getVoucherName(): string
-    {
-        return (string) $this->getVoucher();
-    }
-
-    public function getAmount()
-    {
-        return $this->currentAmount;
-    }
-
-    public function getFieldLayout()
-    {
-        return Craft::$app->getFields()->getLayoutByType(self::class);
-    }
-
-    public function getRedemptions()
-    {
-        if ($this->id) {
-            return GiftVoucher::$plugin->getRedemptions()->getRedemptionsByCodeId($this->id);
-        }
-    }
-
-    public function getPdfUrl($option = null)
-    {
-        return GiftVoucher::$plugin->getPdf()->getPdfUrlForCode($this, $option = null);
-    }
-
-    public function afterSave(bool $isNew)
-    {
-        if (!$isNew) {
-            $codeRecord = CodeRecord::findOne($this->id);
-
-            if (!$codeRecord) {
-                throw new InvalidConfigException('Invalid code id: ' . $this->id);
-            }
-        } else {
-            $codeRecord = new CodeRecord();
-            $codeRecord->id = $this->id;
-        }
-
-        if ($isNew) {
-            $codeRecord->lineItemId = $this->lineItemId;
-            $codeRecord->orderId = $this->orderId;
-            $codeRecord->voucherId = $this->voucherId;
-            $codeRecord->codeKey = $this->generateCodeKey();
-            // set the codeKey to the Code as well to use it directly
-            $this->codeKey = $codeRecord->codeKey;
-        }
-
-        $codeRecord->originalAmount = $this->originalAmount;
-        $codeRecord->currentAmount = $this->currentAmount;
-        $codeRecord->expiryDate = $this->expiryDate;
-
-        $defaultExpiry = GiftVoucher::getInstance()->getSettings()->expiry;
-
-        // If not specifying an expiry and we have a default expiry
-        if ($isNew && !$codeRecord->expiryDate && $defaultExpiry) {
-            $newExpiry = DateTimeHelper::toDateTime(new \DateTime);
-            $newExpiry->modify('+' . $defaultExpiry . ' month');
-            $newExpiry->setTime(0, 0, 0);
-
-            $codeRecord->expiryDate = DateTimeHelper::toIso8601($newExpiry);
-        }
-
-        $codeRecord->save(false);
-
-        parent::afterSave($isNew);
-    }
-
-
-    // Protected Methods
-    // =========================================================================
-
-    protected function generateCodeKey(): string
-    {
-        $generateCodeKeyEvent = new GenerateCodeEvent(['code' => $this]);
-
-        // Raising the 'beforeGenerateCodeKey' event
-        if ($this->hasEventHandlers(self::EVENT_GENERATE_CODE_KEY)) {
-            $this->trigger(self::EVENT_GENERATE_CODE_KEY, $generateCodeKeyEvent);
-        }
-
-        // If a plugin provided the code key - use that.
-        if ($generateCodeKeyEvent->codeKey !== null) {
-            return $generateCodeKeyEvent->codeKey;
-        }
-
-        do {
-            $codeKey = GiftVoucher::getInstance()->getCodes()->generateCodeKey();
-        } while (!GiftVoucher::getInstance()->getCodes()->isCodeKeyUnique($codeKey));
-
-        return $codeKey;
     }
 
     protected static function defineTableAttributes(): array
@@ -377,44 +176,7 @@ class Code extends Element
 
     protected static function defineSearchableAttributes(): array
     {
-        return ['voucherName', 'codeKey'];
-    }
-
-    protected function tableAttributeHtml(string $attribute): string
-    {
-        switch ($attribute) {
-            case 'voucher': {
-                if ($this->getVoucher()) {
-                    return '<a href="' . $this->getVoucher()->getCpEditUrl() . '">' . $this->getVoucher() . '</a>';
-                }
-
-                return '-';
-            }
-            case 'orderLink': {
-
-                if ($this->getOrder()) {
-                    return '<a href="' . $this->getOrder()->getCpEditUrl() . '">' . $this->getOrder() . '</a>';
-                }
-
-                return '-';
-            }
-            case 'originalAmount': {
-                $code = Commerce::getInstance()->getPaymentCurrencies()->getPrimaryPaymentCurrencyIso();
-
-                return Craft::$app->getLocale()->getFormatter()->asCurrency($this->$attribute, strtoupper($code));
-            }
-            case 'currentAmount': {
-                $code = Commerce::getInstance()->getPaymentCurrencies()->getPrimaryPaymentCurrencyIso();
-
-                return Craft::$app->getLocale()->getFormatter()->asCurrency($this->$attribute, strtoupper($code));
-            }
-            case 'expiryDate': {
-                return (!$this->expiryDate) ? '∞' : parent::tableAttributeHtml($attribute);
-            }
-            default: {
-                return parent::tableAttributeHtml($attribute);
-            }
-        }
+        return ['voucherName', 'codeKey', 'orderReference'];
     }
 
     protected static function defineSortOptions(): array
@@ -425,11 +187,7 @@ class Code extends Element
         ];
     }
 
-
-    // Protected methods
-    // =========================================================================
-
-    protected static function prepElementQueryForTableAttribute(ElementQueryInterface $elementQuery, string $attribute)
+    protected static function prepElementQueryForTableAttribute(ElementQueryInterface $elementQuery, string $attribute): void
     {
         if ($attribute === 'voucher') {
             $with = $elementQuery->with ?: [];
@@ -439,5 +197,320 @@ class Code extends Element
         }
 
         parent::prepElementQueryForTableAttribute($elementQuery, $attribute);
+    }
+
+
+    // Properties
+    // =========================================================================
+
+    public ?int $id = null;
+    public ?int $voucherId = null;
+    public ?int $orderId = null;
+    public ?int $lineItemId = null;
+    public ?string $codeKey = null;
+    public ?float $originalAmount = null;
+    public ?float $currentAmount = null;
+    public ?DateTime $expiryDate = null;
+
+    private ?Voucher $_voucher = null;
+    private ?Order $_order = null;
+    private ?LineItem $_lineItem = null;
+
+
+    // Public Methods
+    // =========================================================================
+
+    public function __toString(): string
+    {
+        return (string)$this->codeKey;
+    }
+
+    public function getName(): string
+    {
+        return Craft::t('gift-voucher', 'Code');
+    }
+
+    public function canView(User $user): bool
+    {
+        if (parent::canView($user)) {
+            return true;
+        }
+
+        return $user->can('giftVoucher-manageCodes');
+    }
+
+    public function canSave(User $user): bool
+    {
+        if (parent::canSave($user)) {
+            return true;
+        }
+
+        return $user->can('giftVoucher-manageCodes');
+    }
+
+    public function canDuplicate(User $user): bool
+    {
+        if (parent::canDuplicate($user)) {
+            return true;
+        }
+
+        return $user->can('giftVoucher-manageCodes');
+    }
+
+    public function canDelete(User $user): bool
+    {
+        if (parent::canDelete($user)) {
+            return true;
+        }
+
+        return $user->can('giftVoucher-manageCodes');
+    }
+
+    public function canDeleteForSite(User $user): bool
+    {
+        return $this->canDelete($user);
+    }
+
+    public function createAnother(): ?ElementInterface
+    {
+        return null;
+    }
+
+    public function setEagerLoadedElements(string $handle, array $elements): void
+    {
+        if ($handle === 'voucher') {
+            $this->_voucher = $elements[0] ?? null;
+
+            return;
+        }
+
+        if ($handle === 'order') {
+            $this->_order = $elements[0] ?? null;
+
+            return;
+        }
+
+        parent::setEagerLoadedElements($handle, $elements);
+    }
+
+    public function rules(): array
+    {
+        $rules = parent::rules();
+
+        $rules[] = [['voucherId'], 'required'];
+        $rules[] = [['expiryDate'], DateTimeValidator::class];
+
+        return $rules;
+    }
+
+    public function getCpEditUrl(): ?string
+    {
+        return UrlHelper::cpUrl('gift-voucher/codes/' . $this->id);
+    }
+
+    public function getVoucher(): ?Voucher
+    {
+        if ($this->_voucher) {
+            return $this->_voucher;
+        }
+
+        if ($this->voucherId) {
+            // find disabled vouchers as well, this is only for the CP
+            $this->_voucher = Voucher::find()->id($this->voucherId)->status(null)->one();
+            return $this->_voucher;
+        }
+
+        return null;
+    }
+
+    public function getOrder(): ?Order
+    {
+        if ($this->_order) {
+            return $this->_order;
+        }
+
+        if ($this->orderId) {
+            return $this->_order = Commerce::getInstance()->getOrders()->getOrderById($this->orderId);
+        }
+
+        return null;
+    }
+
+    public function getOrderReference(): ?string
+    {
+        if ($order = $this->getOrder()) {
+            return $order->reference;
+        }
+
+        return null;
+    }
+
+    public function getLineItem(): ?LineItem
+    {
+        if ($this->_lineItem) {
+            return $this->_lineItem;
+        }
+
+        if ($this->lineItemId) {
+            return $this->_lineItem = Commerce::getInstance()->getLineItems()->getLineItemById($this->lineItemId);
+        }
+
+        return null;
+    }
+
+    public function getVoucherType()
+    {
+        $voucher = $this->getVoucher();
+
+        if ($voucher) {
+            return $voucher->getType();
+        }
+
+        return null;
+    }
+
+    public function getVoucherName(): string
+    {
+        return (string)$this->getVoucher();
+    }
+
+    public function getAmount(): ?float
+    {
+        return $this->currentAmount;
+    }
+
+    public function getFieldLayout(): ?FieldLayout
+    {
+        return Craft::$app->getFields()->getLayoutByType(self::class);
+    }
+
+    public function getRedemptions(): array
+    {
+        if ($this->id) {
+            return GiftVoucher::$plugin->getRedemptions()->getRedemptionsByCodeId($this->id);
+        }
+
+        return [];
+    }
+
+    public function getPdfUrl(mixed $option = null): string
+    {
+        return GiftVoucher::$plugin->getPdf()->getPdfUrlForCode($this, $option = null);
+    }
+
+    public function afterSave(bool $isNew): void
+    {
+        if (!$isNew) {
+            $codeRecord = CodeRecord::findOne($this->id);
+
+            if (!$codeRecord) {
+                throw new InvalidConfigException('Invalid code id: ' . $this->id);
+            }
+        } else {
+            $codeRecord = new CodeRecord();
+            $codeRecord->id = $this->id;
+        }
+
+        if ($isNew) {
+            $codeRecord->lineItemId = $this->lineItemId;
+            $codeRecord->orderId = $this->orderId;
+            $codeRecord->voucherId = $this->voucherId;
+
+            // Generate a code key if not already set
+            $codeRecord->codeKey = $this->codeKey ?? $this->generateCodeKey();
+            
+            // set the codeKey to the Code as well to use it directly
+            $this->codeKey = $codeRecord->codeKey;
+        }
+
+        $codeRecord->originalAmount = $this->originalAmount;
+        $codeRecord->currentAmount = $this->currentAmount;
+        $codeRecord->expiryDate = $this->expiryDate;
+
+        $defaultExpiry = GiftVoucher::$plugin->getSettings()->expiry;
+
+        // If not specifying an expiry, and we have a default expiry
+        if ($isNew && !$codeRecord->expiryDate && $defaultExpiry) {
+            $newExpiry = DateTimeHelper::toDateTime(new DateTime);
+            $newExpiry->modify('+' . $defaultExpiry . ' month');
+            $newExpiry->setTime(0, 0, 0);
+
+            $codeRecord->expiryDate = DateTimeHelper::toIso8601($newExpiry);
+        }
+
+        $codeRecord->save(false);
+
+        parent::afterSave($isNew);
+    }
+
+
+    // Protected Methods
+    // =========================================================================
+
+    protected function generateCodeKey(): string
+    {
+        $generateCodeKeyEvent = new GenerateCodeEvent(['code' => $this]);
+
+        // Raising the 'beforeGenerateCodeKey' event
+        if ($this->hasEventHandlers(self::EVENT_GENERATE_CODE_KEY)) {
+            $this->trigger(self::EVENT_GENERATE_CODE_KEY, $generateCodeKeyEvent);
+        }
+
+        // If a plugin provided the code key - use that.
+        if ($generateCodeKeyEvent->codeKey !== null) {
+            return $generateCodeKeyEvent->codeKey;
+        }
+
+        do {
+            $codeKey = GiftVoucher::$plugin->getCodes()->generateCodeKey();
+        } while (!GiftVoucher::$plugin->getCodes()->isCodeKeyUnique($codeKey));
+
+        return $codeKey;
+    }
+
+    protected function tableAttributeHtml(string $attribute): string
+    {
+        switch ($attribute) {
+            case 'voucher':
+            {
+                if ($this->getVoucher()) {
+                    return '<a href="' . $this->getVoucher()->getCpEditUrl() . '">' . $this->getVoucher() . '</a>';
+                }
+
+                return '-';
+            }
+            case 'voucherType':
+            {
+                if ($this->getVoucherType()) {
+                    return '<a href="' . $this->getVoucherType()->getCpEditUrl() . '">' . $this->getVoucherType()->name . '</a>';
+                }
+
+                return '';
+            }
+            case 'orderLink':
+            {
+
+                if ($order = $this->getOrder()) {
+                    return '<a href="' . $order->getCpEditUrl() . '">' . $order . '</a>';
+                }
+
+                return '-';
+            }
+            case 'currentAmount':
+            case 'originalAmount':
+            {
+                $code = Commerce::getInstance()->getPaymentCurrencies()->getPrimaryPaymentCurrencyIso();
+
+                return Craft::$app->getLocale()->getFormatter()->asCurrency($this->$attribute, strtoupper($code));
+            }
+            case 'expiryDate':
+            {
+                return (!$this->expiryDate) ? '∞' : parent::tableAttributeHtml($attribute);
+            }
+            default:
+            {
+                return parent::tableAttributeHtml($attribute);
+            }
+        }
     }
 }

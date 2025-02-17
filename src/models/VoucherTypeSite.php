@@ -9,27 +9,27 @@ use craft\models\Site;
 
 use yii\base\InvalidConfigException;
 
-class VoucherTypeSiteModel extends Model
+class VoucherTypeSite extends Model
 {
     // Properties
     // =========================================================================
 
-    public $id;
-    public $voucherTypeId;
-    public $siteId;
-    public $hasUrls;
-    public $uriFormat;
-    public $template;
-    public $uriFormatIsRequired = true;
+    public ?int $id = null;
+    public ?int $voucherTypeId = null;
+    public ?int $siteId = null;
+    public ?bool $hasUrls = null;
+    public ?string $uriFormat = null;
+    public ?string $template = null;
+    public bool $uriFormatIsRequired = true;
 
-    private $_voucherType;
-    private $_site;
+    private ?VoucherType $_voucherType = null;
+    private ?Site $_site = null;
 
 
     // Public Methods
     // =========================================================================
 
-    public function getVoucherType(): VoucherTypeModel
+    public function getVoucherType(): VoucherType
     {
         if ($this->_voucherType !== null) {
             return $this->_voucherType;
@@ -46,7 +46,7 @@ class VoucherTypeSiteModel extends Model
         return $this->_voucherType;
     }
 
-    public function setVoucherType(VoucherTypeModel $voucherType)
+    public function setVoucherType(VoucherType $voucherType): void
     {
         $this->_voucherType = $voucherType;
     }
@@ -56,7 +56,7 @@ class VoucherTypeSiteModel extends Model
         if (!$this->_site) {
             $this->_site = Craft::$app->getSites()->getSiteById($this->siteId);
         }
-        
+
         return $this->_site;
     }
 

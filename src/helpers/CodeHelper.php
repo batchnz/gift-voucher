@@ -5,15 +5,19 @@ use verbb\giftvoucher\elements\Code;
 
 class CodeHelper
 {
+    // Static Methods
+    // =========================================================================
+
     /**
      * Get a code either codeKey, elementId or if it is already a code, just return it
      *
      * @param $code
      *
+     * @return Code|null
      * @author Robin Schambach
      * @since  18.12.2019
      */
-    public static function getCode($code)
+    public static function getCode($code): ?Code
     {
         if (is_string($code) === true) {
             return Code::findOne(['codeKey' => $code]);

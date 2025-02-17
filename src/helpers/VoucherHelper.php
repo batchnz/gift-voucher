@@ -9,12 +9,13 @@ use craft\helpers\DateTimeHelper;
 use craft\helpers\Localization;
 use craft\web\Request;
 
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
-
-use yii\web\HttpException;
+use yii\web\NotFoundHttpException;
 
 class VoucherHelper
 {
+    // Static Methods
+    // =========================================================================
+
     public static function voucherFromPost(Request $request = null): Voucher
     {
         if ($request === null) {
@@ -51,10 +52,10 @@ class VoucherHelper
 
         $voucher->enabled = (bool)$request->getBodyParam('enabled');
 
-        $voucher->price = Localization::normalizeNumber($request->getBodyParam('price'));
+        $voucher->price = (Localization::normalizeNumber($request->getBodyParam('price', 0))) ?: 0;
         $voucher->sku = $request->getBodyParam('sku');
 
-        $voucher->customAmount = $request->getBodyParam('customAmount');
+        $voucher->customAmount = (bool)$request->getBodyParam('customAmount');
 
         if ($voucher->customAmount) {
             $voucher->price = 0;
@@ -82,7 +83,10 @@ class VoucherHelper
         // Last checks
         if (empty($voucher->sku)) {
             $voucherType = $voucher->getType();
-            $voucher->sku = Craft::$app->getView()->renderObjectTemplate($voucherType->skuFormat, $voucher);
+
+            if ($voucherType->skuFormat) {
+                $voucher->sku = Craft::$app->getView()->renderObjectTemplate($voucherType->skuFormat, $voucher);
+            }
         }
 
         return $voucher;

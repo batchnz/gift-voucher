@@ -1,30 +1,34 @@
 <?php
 namespace verbb\giftvoucher\adjusters;
 
+use verbb\giftvoucher\GiftVoucher;
+use verbb\giftvoucher\elements\Code;
+use verbb\giftvoucher\events\VoucherAdjustmentsEvent;
+
 use Craft;
 use craft\base\Component;
+use craft\helpers\ArrayHelper;
+
+use craft\commerce\Plugin as Commerce;
 use craft\commerce\base\AdjusterInterface;
 use craft\commerce\elements\Order;
 use craft\commerce\models\OrderAdjustment;
-use craft\commerce\Plugin as Commerce;
+
 use DateTime;
-use verbb\giftvoucher\elements\Code;
-use verbb\giftvoucher\events\VoucherAdjustmentsEvent;
-use verbb\giftvoucher\GiftVoucher;
 
 class GiftVoucherAdjuster extends Component implements AdjusterInterface
 {
     // Constants
     // =========================================================================
 
-    const EVENT_AFTER_VOUCHER_ADJUSTMENTS_CREATED = 'afterVoucherAdjustmentsCreated';
-    const ADJUSTMENT_TYPE = 'discount';
+    public const ADJUSTMENT_TYPE = 'voucher';
+    public const EVENT_AFTER_VOUCHER_ADJUSTMENTS_CREATED = 'afterVoucherAdjustmentsCreated';
 
 
     // Properties
     // =========================================================================
 
-    private $_orderTotal;
+    private ?float $_orderTotal = null;
 
 
     // Public Methods
@@ -35,10 +39,10 @@ class GiftVoucherAdjuster extends Component implements AdjusterInterface
         $adjustments = [];
 
         $this->_orderTotal = $order->getTotalPrice();
-        $settings = GiftVoucher::getInstance()->getSettings();
+        $settings = GiftVoucher::$plugin->getSettings();
 
         // Get code by session
-        $giftVoucherCodes = GiftVoucher::getInstance()->getCodeStorage()->getCodeKeys($order);
+        $giftVoucherCodes = GiftVoucher::$plugin->getCodeStorage()->getCodeKeys($order);
 
         if (!$giftVoucherCodes || count($giftVoucherCodes) == 0) {
             return [];
@@ -63,8 +67,11 @@ class GiftVoucherAdjuster extends Component implements AdjusterInterface
             foreach ($discounts as $discount) {
                 // Is this discount set to stop processing?
                 if ($discount->stopProcessing) {
+                    // Get all the coupon codes for the discount
+                    $codes = ArrayHelper::getColumn($discount->getCoupons(), 'code');
+
                     // Is this discount applied on the order?
-                    if ($order->couponCode && (strcasecmp($order->couponCode, $discount->code) == 0)) {
+                    if ($order->couponCode && in_array($order->couponCode, $codes)) {
                         return [];
                     }
                 }
@@ -91,23 +98,24 @@ class GiftVoucherAdjuster extends Component implements AdjusterInterface
     // Private Methods
     // =========================================================================
 
-    private function _getAdjustment(Order $order, Code $voucherCode)
+    private function _getAdjustment(Order $order, Code $voucherCode): bool|OrderAdjustment
     {
+        // If no attached voucher, discard
+        if (!$voucherCode->getVoucher()) {
+            return false;
+        }
+
         //preparing model
         $adjustment = new OrderAdjustment;
         $adjustment->type = self::ADJUSTMENT_TYPE;
         $adjustment->name = $voucherCode->getVoucher()->title;
         $adjustment->orderId = $order->id;
-        $adjustment->description = Craft::t(
-            'gift-voucher',
-            'Gift Voucher discount using code {code}',
-            [
-                'code' => $voucherCode->codeKey
-            ]
-        );
         $adjustment->sourceSnapshot = $voucherCode->attributes;
+        $adjustment->description = Craft::t('gift-voucher', 'Gift Voucher discount using code {code}', [
+            'code' => $voucherCode->codeKey,
+        ]);
 
-        // Check if there is a amount left
+        // Check if there is an amount left
         if ($voucherCode->currentAmount <= 0) {
             return false;
         }
@@ -122,7 +130,7 @@ class GiftVoucherAdjuster extends Component implements AdjusterInterface
         if ($this->_orderTotal < $voucherCode->currentAmount) {
             $adjustment->amount = $this->_orderTotal * -1;
         } else {
-            $adjustment->amount = (float) $voucherCode->currentAmount * -1;
+            $adjustment->amount = (float)$voucherCode->currentAmount * -1;
         }
 
         $this->_orderTotal += $adjustment->amount;

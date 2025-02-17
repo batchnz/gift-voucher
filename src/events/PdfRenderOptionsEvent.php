@@ -7,5 +7,5 @@ use yii\base\Event;
 
 class PdfRenderOptionsEvent extends Event
 {
-    public $options;
+    public array|Options $options = [];
 }

@@ -2,58 +2,49 @@
 namespace verbb\giftvoucher\services;
 
 use verbb\giftvoucher\events\RedemptionEvent;
-use verbb\giftvoucher\models\RedemptionModel;
-use verbb\giftvoucher\records\RedemptionRecord;
+use verbb\giftvoucher\models\Redemption;
+use verbb\giftvoucher\records\Redemption as RedemptionRecord;
 
 use Craft;
 use craft\base\Component;
+use craft\base\MemoizableArray;
 use craft\db\Query;
+use craft\helpers\ArrayHelper;
+use craft\helpers\Db;
 
-class RedemptionsService extends Component
+use Exception;
+
+class Redemptions extends Component
 {
     // Constants
     // =========================================================================
 
-    const EVENT_BEFORE_SAVE_REDEMPTION = 'beforeSaveRedemption';
-    const EVENT_AFTER_SAVE_REDEMPTION = 'afterSaveRedemption';
-    const EVENT_BEFORE_DELETE_REDEMPTION = 'beforeDeleteRedemption';
-    const EVENT_AFTER_DELETE_REDEMPTION = 'afterDeleteRedemption';
+    public const EVENT_BEFORE_SAVE_REDEMPTION = 'beforeSaveRedemption';
+    public const EVENT_AFTER_SAVE_REDEMPTION = 'afterSaveRedemption';
+    public const EVENT_BEFORE_DELETE_REDEMPTION = 'beforeDeleteRedemption';
+    public const EVENT_AFTER_DELETE_REDEMPTION = 'afterDeleteRedemption';
 
 
     // Properties
     // =========================================================================
 
-    private $_redemptionsById;
+    private ?MemoizableArray $_redemptions = null;
 
 
     // Public Methods
     // =========================================================================
 
-    public function getRedemptionById(int $id)
+    public function getRedemptionById(int $id): ?Redemption
     {
-        $result = $this->_createRedemptionsQuery()
-            ->where(['id' => $id])
-            ->one();
-
-        return $result ? new RedemptionModel($result) : null;
+        return $this->_redemptions()->firstWhere('id', $id);
     }
 
-    public function getRedemptionsByCodeId(int $codeId)
+    public function getRedemptionsByCodeId(int $codeId): array
     {
-        $results = $this->_createRedemptionsQuery()
-            ->where(['codeId' => $codeId])
-            ->all();
-
-        $redemptions = [];
-
-        foreach ($results as $result) {
-            $redemptions[] = new RedemptionModel($result);
-        }
-
-        return $redemptions;
+        return $this->_redemptions()->where('codeId', $codeId)->all();
     }
 
-    public function saveRedemption(RedemptionModel $redemption, bool $runValidation = true): bool
+    public function saveRedemption(Redemption $redemption, bool $runValidation = true): bool
     {
         $isNewRedemption = !$redemption->id;
 
@@ -69,8 +60,7 @@ class RedemptionsService extends Component
             return false;
         }
 
-        $redemptionRecord = $this->_getRedemptionRecordById($redemption->id);
-
+        $redemptionRecord = $this->_getRedemptionRecord($redemption->id);
         $redemptionRecord->codeId = $redemption->codeId;
         $redemptionRecord->orderId = $redemption->orderId;
         $redemptionRecord->amount = $redemption->amount;
@@ -78,13 +68,12 @@ class RedemptionsService extends Component
         // Save the record
         $redemptionRecord->save(false);
 
-        // Now that we have a ID, save it on the model
+        // Now that we have an ID, save it on the model
         if ($isNewRedemption) {
             $redemption->id = $redemptionRecord->id;
         }
 
-        // Might as well update our cache of the model while we have it.
-        $this->_redemptionsById[$redemption->id] = $redemption;
+        $this->_redemptions = null;
 
         if ($this->hasEventHandlers(self::EVENT_AFTER_SAVE_REDEMPTION)) {
             $this->trigger(self::EVENT_AFTER_SAVE_REDEMPTION, new RedemptionEvent([
@@ -107,7 +96,7 @@ class RedemptionsService extends Component
         return $this->deleteRedemption($redemption);
     }
 
-    public function deleteRedemption(RedemptionModel $redemption): bool
+    public function deleteRedemption(Redemption $redemption): bool
     {
         if ($this->hasEventHandlers(self::EVENT_BEFORE_DELETE_REDEMPTION)) {
             $this->trigger(self::EVENT_BEFORE_DELETE_REDEMPTION, new RedemptionEvent([
@@ -115,9 +104,9 @@ class RedemptionsService extends Component
             ]));
         }
 
-        Craft::$app->getDb()->createCommand()
-            ->delete('{{%giftvoucher_redemptions}}', ['id' => $redemption->id])
-            ->execute();
+        Db::delete('{{%giftvoucher_redemptions}}', [
+            'id' => $redemption->id,
+        ]);
 
         if ($this->hasEventHandlers(self::EVENT_AFTER_DELETE_REDEMPTION)) {
             $this->trigger(self::EVENT_AFTER_DELETE_REDEMPTION, new RedemptionEvent([
@@ -132,19 +121,19 @@ class RedemptionsService extends Component
     // Private Methods
     // =========================================================================
 
-    private function _getRedemptionRecordById(int $redemptionId = null): RedemptionRecord
+    private function _redemptions(): MemoizableArray
     {
-        if ($redemptionId !== null) {
-            $redemptionRecord = RedemptionRecord::findOne($redemptionId);
+        if (!isset($this->_redemptions)) {
+            $redemptions = [];
 
-            if (!$redemptionRecord) {
-                throw new RedemptionNotFoundException("No redemption exists with the ID '{$redemptionId}'");
+            foreach ($this->_createRedemptionsQuery()->all() as $result) {
+                $redemptions[] = new Redemption($result);
             }
-        } else {
-            $redemptionRecord = new RedemptionRecord();
+
+            $this->_redemptions = new MemoizableArray($redemptions);
         }
 
-        return $redemptionRecord;
+        return $this->_redemptions;
     }
 
     private function _createRedemptionsQuery(): Query
@@ -155,7 +144,20 @@ class RedemptionsService extends Component
                 'codeId',
                 'orderId',
                 'amount',
+                'dateCreated',
+                'dateUpdated',
+                'uid',
             ])
             ->from(['{{%giftvoucher_redemptions}}']);
+    }
+
+    private function _getRedemptionRecord(int|string|null $id): RedemptionRecord
+    {
+        /** @var RedemptionRecord $redemption */
+        if ($id && $redemption = RedemptionRecord::find()->where(['id' => $id])->one()) {
+            return $redemption;
+        }
+
+        return new RedemptionRecord();
     }
 }

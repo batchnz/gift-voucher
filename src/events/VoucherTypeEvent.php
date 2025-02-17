@@ -1,6 +1,8 @@
 <?php
 namespace verbb\giftvoucher\events;
 
+use verbb\giftvoucher\models\VoucherType;
+
 use yii\base\Event;
 
 class VoucherTypeEvent extends Event
@@ -8,7 +10,7 @@ class VoucherTypeEvent extends Event
     // Properties
     // =========================================================================
 
-    public $voucherType;
-    public $isNew = false;
+    public VoucherType $voucherType;
+    public bool $isNew = false;
     
 }

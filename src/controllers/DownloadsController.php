@@ -2,6 +2,7 @@
 namespace verbb\giftvoucher\controllers;
 
 use verbb\giftvoucher\GiftVoucher;
+use verbb\giftvoucher\helpers\Locale;
 
 use Craft;
 use craft\web\Controller;
@@ -16,13 +17,13 @@ class DownloadsController extends Controller
     // Properties
     // =========================================================================
 
-    protected $allowAnonymous = true;
+    protected array|bool|int $allowAnonymous = true;
 
 
     // Public Methods
     // =========================================================================
 
-    public function actionPdf()
+    public function actionPdf(): Response|string
     {
         $request = Craft::$app->getRequest();
 
@@ -37,6 +38,15 @@ class DownloadsController extends Controller
 
         $format = $request->getParam('format');
         $attach = $request->getParam('attach');
+
+        $siteHandle = $request->getParam('site');
+        $site = Craft::$app->getSites()->getPrimarySite();
+
+        if ($siteHandle) {
+            if ($requestedSite = Craft::$app->getSites()->getSiteByHandle($siteHandle)) {
+                $site = $requestedSite;
+            }
+        }
 
         if ($number) {
             $order = Commerce::getInstance()->getOrders()->getOrderByNumber($number);
@@ -55,16 +65,28 @@ class DownloadsController extends Controller
             $order = $codes[0]->order;
         }
 
-        $pdf = GiftVoucher::getInstance()->getPdf()->renderPdf($codes, $order, $lineItem, $option);
-        $filenameFormat = GiftVoucher::getInstance()->getSettings()->voucherCodesPdfFilenameFormat;
+        // Switch to use the correct site/language
+        $originalLanguage = Craft::$app->language;
+        $originalFormattingLocale = Craft::$app->formattingLocale;
 
-        $fileName = $this->getView()->renderObjectTemplate($filenameFormat, $order);
+        Locale::switchAppLanguage($site->language);
+
+        $pdf = GiftVoucher::$plugin->getPdf()->renderPdf($codes, $order, $lineItem, $option);
+
+        // Set previous language back
+        Locale::switchAppLanguage($originalLanguage, $originalFormattingLocale);
+
+        $filenameFormat = GiftVoucher::$plugin->getSettings()->voucherCodesPdfFilenameFormat;
+
+        $fileName = $this->getView()->renderObjectTemplate($filenameFormat, $order, [
+            'codeKey' => $codes[0]->codeKey ?? null,
+        ]);
 
         if (!$fileName) {
             if ($order) {
                 $fileName = 'Voucher-' . $order->number;
             } else if ($codes) {
-                $fileName = 'Voucher-' . $code[0]->codeKey;
+                $fileName = 'Voucher-' . $codes[0]->codeKey;
             }
         }
 
@@ -78,8 +100,8 @@ class DownloadsController extends Controller
 
         if ($format === 'plain') {
             return $pdf;
-        } else {
-            return Craft::$app->getResponse()->sendContentAsFile($pdf, $fileName . '.pdf', $options);
         }
+
+        return Craft::$app->getResponse()->sendContentAsFile($pdf, $fileName . '.pdf', $options);
     }
 }

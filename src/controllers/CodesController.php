@@ -10,7 +10,6 @@ use verbb\giftvoucher\elements\Voucher;
 
 use Craft;
 use craft\base\Element;
-use craft\base\Field;
 use craft\helpers\DateTimeHelper;
 use craft\helpers\UrlHelper;
 use craft\web\Controller;
@@ -23,7 +22,7 @@ class CodesController extends Controller
     // Public Methods
     // =========================================================================
 
-    public function init()
+    public function init(): void
     {
         $this->requirePermission('giftVoucher-manageCodes');
 
@@ -32,6 +31,8 @@ class CodesController extends Controller
 
     public function actionEdit(int $codeId = null, Code $code = null): Response
     {
+        $variables = [];
+
         if ($code === null) {
             if ($codeId === null) {
                 $code = new Code();
@@ -49,36 +50,36 @@ class CodesController extends Controller
 
         // prepend the first tab as general setting in case there are no field layout tabs
         if (empty($tabs) === false) {
-            $variables['tabs'][] = [
+            $variables['tabs']['general'] = [
                 // TODO: Maybe There is a better wording for it ¯\_(ツ)_/¯
                 'label' => Craft::t('app', 'Settings'),
                 'url' => '#general',
-                'class' => $code->getErrors('voucherId') ? 'error' : null
+                'class' => $code->getErrors('voucherId') ? 'error' : null,
             ];
         }
 
         // include each field layout tab
-        foreach ($code->getFieldLayout()->getTabs() as $index => $tab) {
+        foreach ($code->getFieldLayout()->getTabs() as $tab) {
             // Do any of the fields on this tab have errors?
             $hasErrors = false;
 
             // check if there are any errors for this tab
-            if ($code->hasErrors()) {
-                foreach ($tab->getFields() as $field) {
+            if ($tab->hasErrors()) {
+                foreach ($tab->getCustomFields() as $field) {
                     if ($hasErrors = $code->hasErrors($field->handle . '.*')) {
                         break;
                     }
                 }
             }
 
-            $variables['tabs'][] = [
+            $variables['tabs'][$tab->getHtmlId()] = [
                 'label' => Craft::t('site', $tab->name),
                 'url' => '#' . $tab->getHtmlId(),
-                'class' => $hasErrors ? 'error' : null
+                'class' => $hasErrors ? 'error' : null,
             ];
         }
 
-        $variables['title'] = $code->id ? (string) $code : Craft::t('gift-voucher', 'Create a new Code');
+        $variables['title'] = $code->id ? (string)$code : Craft::t('gift-voucher', 'Create a new Code');
         $variables['code'] = $code;
         $variables['voucherElementType'] = Voucher::class;
         $variables['continueEditingUrl'] = 'gift-voucher/codes/{id}';
@@ -86,7 +87,7 @@ class CodesController extends Controller
         return $this->renderTemplate('gift-voucher/codes/_edit', $variables);
     }
 
-    public function actionSave()
+    public function actionSave(): ?Response
     {
         $this->requirePostRequest();
 
@@ -108,12 +109,14 @@ class CodesController extends Controller
 
         if (is_array($voucherIds) && !empty($voucherIds)) {
             $code->voucherId = reset($voucherIds);
+        } else {
+            $code->voucherId = null;
         }
 
-        $code->id = $request->getBodyParam('codeId');
+        $code->id = (int)$request->getBodyParam('codeId');
         $code->enabled = (bool)$request->getBodyParam('enabled');
-        $code->originalAmount = $request->getBodyParam('originalAmount');
-        $code->currentAmount = $request->getBodyParam('currentAmount');
+        $code->originalAmount = (float)$request->getBodyParam('originalAmount');
+        $code->currentAmount = (float)$request->getBodyParam('currentAmount');
         $code->expiryDate = (($date = $request->getParam('expiryDate')) !== false ? (DateTimeHelper::toDateTime($date) ?: null) : $code->expiryDate);
         $redemptions = $request->getBodyParam('redemptions') ?: [];
 
@@ -164,7 +167,7 @@ class CodesController extends Controller
         return $this->redirectToPostedUrl($code);
     }
 
-    public function actionDelete()
+    public function actionDelete(): ?Response
     {
         $this->requirePostRequest();
 
@@ -194,7 +197,7 @@ class CodesController extends Controller
         return null;
     }
 
-    public function actionBulkGenerate()
+    public function actionBulkGenerate(): Response
     {
         $variables = Craft::$app->getUrlManager()->getRouteParams();
         $variables['voucherElementType'] = Voucher::class;
@@ -202,11 +205,12 @@ class CodesController extends Controller
         return $this->renderTemplate('gift-voucher/codes/_bulk-generate', $variables);
     }
 
-    public function actionBulkGenerateSubmit()
+    public function actionBulkGenerateSubmit(): ?Response
     {
         $this->requirePostRequest();
 
         $request = Craft::$app->getRequest();
+        $voucherId = null;
         $errors = [];
         $amount = (int)$request->getBodyParam('amount');
         $voucherAmount = (float)$request->getBodyParam('voucherAmount');

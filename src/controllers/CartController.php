@@ -4,25 +4,29 @@ namespace verbb\giftvoucher\controllers;
 use verbb\giftvoucher\GiftVoucher;
 
 use Craft;
-use craft\web\Controller;
 
 use craft\commerce\Plugin as Commerce;
+use craft\commerce\elements\Order;
 use craft\commerce\controllers\BaseFrontEndController;
+
+use yii\web\Response;
 
 class CartController extends BaseFrontEndController
 {
     // Properties
     // =========================================================================
 
-    private $_cart;
-    private $_cartVariable;
+    private Order $_cart;
+    private string $_cartVariable;
 
 
     // Public Methods
     // =========================================================================
 
-    public function init()
+    public function init(): void
     {
+        parent::init();
+
         $this->_cart = Commerce::getInstance()->getCarts()->getCart();
         $this->_cartVariable = Commerce::getInstance()->getSettings()->cartVariable;
 
@@ -32,16 +36,13 @@ class CartController extends BaseFrontEndController
         if ($orderId = $request->getParam('orderId')) {
             $this->_cart = Commerce::getInstance()->getOrders()->getOrderById($orderId);
         }
-
-        parent::init();
     }
 
-    public function actionAddCode()
+    public function actionAddCode(): ?Response
     {
         $this->requirePostRequest();
 
         $request = Craft::$app->getRequest();
-        $session = Craft::$app->getSession();
 
         $voucherCode = $request->getParam('voucherCode');
 
@@ -57,7 +58,7 @@ class CartController extends BaseFrontEndController
         GiftVoucher::$plugin->getCodes()->matchCode($voucherCode, $error);
 
         if ($error) {
-            // Check to see if its a Coupon code
+            // Check to see if it's a Coupon code
             $isCouponCode = Commerce::getInstance()->getDiscounts()->getDiscountByCode($voucherCode);
 
             if ($isCouponCode) {
@@ -83,18 +84,18 @@ class CartController extends BaseFrontEndController
 
         // Get already stored voucher codes
         // $giftVoucherCodes = $session->get('giftVoucher.giftVoucherCodes');
-        GiftVoucher::getInstance()->getCodeStorage()->add($voucherCode, $this->_cart);
+        GiftVoucher::$plugin->getCodeStorage()->add($voucherCode, $this->_cart);
 
         return $this->_returnCart();
     }
 
-    public function actionRemoveCode()
+    public function actionRemoveCode(): ?Response
     {
         $this->requirePostRequest();
         $request = Craft::$app->getRequest();
 
         $voucherCode = $request->getParam('voucherCode');
-        GiftVoucher::getInstance()->getCodeStorage()->remove($voucherCode, $this->_cart);
+        GiftVoucher::$plugin->getCodeStorage()->remove($voucherCode, $this->_cart);
 
         return $this->_returnCart();
     }
@@ -103,7 +104,7 @@ class CartController extends BaseFrontEndController
     // Private Methods
     // =========================================================================
 
-    private function _returnCart()
+    private function _returnCart(): ?Response
     {
         $request = Craft::$app->getRequest();
 
@@ -116,12 +117,12 @@ class CartController extends BaseFrontEndController
                     'error' => $error,
                     'errors' => $this->_cart->getErrors(),
                     'success' => !$this->_cart->hasErrors(),
-                    $this->_cartVariable => $this->cartArray($this->_cart)
+                    $this->_cartVariable => $this->cartArray($this->_cart),
                 ]);
             }
 
             Craft::$app->getUrlManager()->setRouteParams([
-                $this->_cartVariable => $this->_cart
+                $this->_cartVariable => $this->_cart,
             ]);
 
             Craft::$app->getSession()->setError($error);
@@ -140,12 +141,12 @@ class CartController extends BaseFrontEndController
                     'error' => $error,
                     'errors' => $this->_cart->getErrors(),
                     'success' => !$this->_cart->hasErrors(),
-                    $this->_cartVariable => $this->cartArray($this->_cart)
+                    $this->_cartVariable => $this->cartArray($this->_cart),
                 ]);
             }
 
             Craft::$app->getUrlManager()->setRouteParams([
-                $this->_cartVariable => $this->_cart
+                $this->_cartVariable => $this->_cart,
             ]);
 
             Craft::$app->getSession()->setError($error);
@@ -156,14 +157,14 @@ class CartController extends BaseFrontEndController
         if ($request->getAcceptsJson()) {
             return $this->asJson([
                 'success' => !$this->_cart->hasErrors(),
-                $this->_cartVariable => $this->cartArray($this->_cart)
+                $this->_cartVariable => $this->cartArray($this->_cart),
             ]);
         }
 
         Craft::$app->getSession()->setNotice(Craft::t('commerce', 'Cart updated.'));
 
         Craft::$app->getUrlManager()->setRouteParams([
-            $this->_cartVariable => $this->_cart
+            $this->_cartVariable => $this->_cart,
         ]);
 
         return $this->redirectToPostedUrl();

@@ -5,56 +5,62 @@ use verbb\giftvoucher\GiftVoucher;
 use verbb\giftvoucher\elements\Voucher;
 
 use Craft;
+use craft\base\ElementInterface;
 use craft\events\SiteEvent;
 use craft\helpers\Assets;
+use craft\helpers\Queue;
 use craft\queue\jobs\ResaveElements;
 
 use craft\commerce\events\MailEvent;
 
 use yii\base\Component;
 
-class VouchersService extends Component
+use Throwable;
+
+class Vouchers extends Component
 {
     // Properties
     // =========================================================================
 
-    private $_pdfPaths = [];
+    private array $_pdfPaths = [];
 
 
     // Public Methods
     // =========================================================================
 
-    public function getVoucherById(int $id, $siteId = null)
+    public function getVoucherById(int $id, $siteId = null): ?Voucher
     {
+        /* @noinspection PhpIncompatibleReturnTypeInspection */
         return Craft::$app->getElements()->getElementById($id, Voucher::class, $siteId);
     }
 
-    public function afterSaveSiteHandler(SiteEvent $event)
+    public function afterSaveSiteHandler(SiteEvent $event): void
     {
-        $queue = Craft::$app->getQueue();
-        $siteId = $event->oldPrimarySiteId;
-        $elementTypes = [
-            Voucher::class,
-        ];
+        if ($event->isNew && isset($event->oldPrimarySiteId)) {
+            $oldPrimarySiteId = $event->oldPrimarySiteId;
 
-        foreach ($elementTypes as $elementType) {
-            $queue->push(new ResaveElements([
-                'elementType' => $elementType,
-                'criteria' => [
-                    'siteId' => $siteId,
-                    'status' => null,
-                    'enabledForSite' => false
-                ]
-            ]));
+            $elementTypes = [
+                Voucher::class,
+            ];
+
+            foreach ($elementTypes as $elementType) {
+                Queue::push(new ResaveElements([
+                    'elementType' => $elementType,
+                    'criteria' => [
+                        'siteId' => $oldPrimarySiteId,
+                        'status' => null,
+                    ],
+                ]));
+            }
         }
     }
 
-    public function onBeforeSendEmail(MailEvent $event)
+    public function onBeforeSendEmail(MailEvent $event): void
     {
         $order = $event->order;
         $commerceEmail = $event->commerceEmail;
 
-        $settings = GiftVoucher::getInstance()->getSettings();
+        $settings = GiftVoucher::$plugin->getSettings();
 
         try {
             // Don't proceed further if there's no voucher in this order
@@ -81,13 +87,13 @@ class VouchersService extends Component
             }
 
             // Generate the PDF for the order
-            $pdf = GiftVoucher::getInstance()->getPdf()->renderPdf([], $order, null, null);
+            $pdf = GiftVoucher::$plugin->getPdf()->renderPdf([], $order, null, null);
 
             if (!$pdf) {
                 return;
             }
 
-            // Save it in a temp location so we can attach it
+            // Save it in a temp location, so we can attach it
             $pdfPath = Assets::tempFilePath('pdf');
             file_put_contents($pdfPath, $pdf);
 
@@ -107,11 +113,12 @@ class VouchersService extends Component
                 return;
             }
 
+            $craftEmail = $event->craftEmail;
             $event->craftEmail->attach($pdfPath, ['fileName' => $fileName . '.pdf', 'contentType' => 'application/pdf']);
 
             // Store for later
             $this->_pdfPaths[] = $pdfPath;
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $error = Craft::t('gift-voucher', 'PDF unable to be attached to “{email}” for order “{order}”. Error: {error} {file}:{line}', [
                 'error' => $e->getMessage(),
                 'file' => $e->getFile(),
@@ -124,11 +131,12 @@ class VouchersService extends Component
         }
     }
 
-    public function onAfterSendEmail(MailEvent $event)
+    public function onAfterSendEmail(MailEvent $event): void
     {
         // Clear out any generated PDFs
         foreach ($this->_pdfPaths as $pdfPath) {
             unlink($pdfPath);
         }
     }
+
 }

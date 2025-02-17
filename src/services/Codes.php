@@ -7,12 +7,13 @@ use verbb\giftvoucher\GiftVoucher;
 use verbb\giftvoucher\adjusters\GiftVoucherAdjuster;
 use verbb\giftvoucher\elements\Code;
 use verbb\giftvoucher\elements\Voucher;
-use verbb\giftvoucher\models\RedemptionModel;
+use verbb\giftvoucher\events\MatchCodeEvent;
+use verbb\giftvoucher\events\PopulateCodeFromLineItemEvent;
+use verbb\giftvoucher\models\Redemption;
 
 use Craft;
 use craft\base\Element;
 use craft\events\ConfigEvent;
-use craft\helpers\ArrayHelper;
 use craft\helpers\Json;
 use craft\helpers\ProjectConfig as ProjectConfigHelper;
 use craft\helpers\StringHelper;
@@ -26,28 +27,36 @@ use yii\base\Component;
 use yii\base\Event;
 use yii\base\ModelEvent;
 
-class CodesService extends Component
+use DateTime;
+use Throwable;
+
+class Codes extends Component
 {
+    // Constants
+    // =========================================================================
+
+    public const EVENT_BEFORE_MATCH_CODE = 'beforeMatchCode';
+
     /**
      * This event is fired when a new Code is created after an order is complete
      * to give users a chance to modify the field layout
      */
-    const EVENT_POPULATE_CODE_FROM_LINE_ITEM = 'populateCodeFromLineItem';
+    public const EVENT_POPULATE_CODE_FROM_LINE_ITEM = 'populateCodeFromLineItem';
 
-    const EVENT_AFTER_GENERATE_CODES = 'afterGenerateCodes';
+    public const CONFIG_FIELDLAYOUT_KEY = 'giftVoucher.codes.fieldLayouts';
 
-    const CONFIG_FIELDLAYOUT_KEY = 'giftVoucher.codes.fieldLayouts';
-
+    public const EVENT_AFTER_GENERATE_CODES = 'afterGenerateCodes';
 
     // Public Methods
     // =========================================================================
 
-    public function isCodeKeyUnique(string $codeKey): bool
+    public function getCodeById(int $codeId, ?int $siteId = null): ?Code
     {
-        return !(bool)Code::findOne(['codeKey' => $codeKey]);
+        /* @noinspection PhpIncompatibleReturnTypeInspection */
+        return Craft::$app->getElements()->getElementById($codeId, Code::class, $siteId);
     }
 
-    public static function handleCompletedOrder(Event $event)
+    public static function handleCompletedOrder(Event $event): void
     {
         try {
             /** @var Order $order */
@@ -63,7 +72,7 @@ class CodesService extends Component
                             'id' => $lineItem->id,
                         ]));
 
-                        $success = GiftVoucher::getInstance()->getCodes()->codeVoucherByOrder($purchasable, $order, $lineItem);
+                        $success = GiftVoucher::$plugin->getCodes()->codeVoucherByOrder($purchasable, $order, $lineItem);
 
                         if (!$success) {
                             $error = Craft::t('app', 'Unable to save voucher: “{errors}”.', [
@@ -77,10 +86,10 @@ class CodesService extends Component
             }
 
             // Handle adding the voucher codes as options for the lineitems
-            $success = GiftVoucher::getInstance()->getCodes()->codesToOptions($order);
+            $success = GiftVoucher::$plugin->getCodes()->codesToOptions($order);
 
             // Handle redemption of vouchers (when someone is using a code)
-            $giftVoucherCodes = GiftVoucher::getInstance()->getCodeStorage()->getCodeKeys($order);
+            $giftVoucherCodes = GiftVoucher::$plugin->getCodeStorage()->getCodeKeys($order);
 
             if ($giftVoucherCodes && count($giftVoucherCodes) > 0) {
                 foreach ($order->getAdjustments() as $adjustment) {
@@ -97,7 +106,7 @@ class CodesService extends Component
                             Craft::$app->getElements()->saveElement($code, false);
 
                             // Track code redemption
-                            $redemption = new RedemptionModel();
+                            $redemption = new Redemption();
                             $redemption->codeId = $code->id;
                             $redemption->orderId = $order->id;
                             $redemption->amount = (float)$adjustment->amount * -1;
@@ -120,7 +129,7 @@ class CodesService extends Component
                 }
 
                 // Delete the code
-                GiftVoucher::getInstance()->getCodeStorage()->setCodes([], $order);
+                GiftVoucher::$plugin->getCodeStorage()->setCodes([], $order);
             } else {
                 $error = Craft::t('app', 'No vouchers in code storage for order {id}', [
                     'id' => $order->id,
@@ -128,7 +137,7 @@ class CodesService extends Component
 
                 GiftVoucher::log($error);
             }
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $error = Craft::t('app', 'Unable to complete gift voucher order: “{message}” {file}:{line}', [
                 'message' => $e->getMessage(),
                 'file' => $e->getFile(),
@@ -137,6 +146,11 @@ class CodesService extends Component
 
             GiftVoucher::error($error);
         }
+    }
+
+    public function isCodeKeyUnique(string $codeKey): bool
+    {
+        return !(bool)Code::findOne(['codeKey' => $codeKey]);
     }
 
     /**
@@ -155,14 +169,8 @@ class CodesService extends Component
     /**
      * Create a Code after an Order is completed
      *
-     * @param \verbb\giftvoucher\elements\Voucher $voucher
-     * @param \craft\commerce\elements\Order      $order
-     * @param \craft\commerce\models\LineItem     $lineItem
      *
-     * @throws \Throwable
-     * @throws \craft\errors\ElementNotFoundException
-     * @throws \yii\base\Exception
-     * @return bool
+     * @throws Throwable
      */
     public function codeVoucherByOrder(Voucher $voucher, Order $order, LineItem $lineItem): bool
     {
@@ -183,11 +191,11 @@ class CodesService extends Component
             // give plugins a chance to change/modify it
             if ($this->hasEventHandlers(self::EVENT_POPULATE_CODE_FROM_LINE_ITEM)) {
                 $this->trigger(self::EVENT_POPULATE_CODE_FROM_LINE_ITEM, new PopulateCodeFromLineItemEvent([
-                    'code'          => $code,
-                    'order'         => $order,
-                    'lineItem'      => $lineItem,
-                    'customFields'  => $customFields,
-                    'voucher'       => $voucher
+                    'code' => $code,
+                    'order' => $order,
+                    'lineItem' => $lineItem,
+                    'customFields' => $customFields,
+                    'voucher' => $voucher,
                 ]));
             }
 
@@ -204,7 +212,7 @@ class CodesService extends Component
                     'errors' => Json::encode($code->getErrors()),
                 ]));
             }
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $error = Craft::t('app', 'Unable to save voucher code for order: “{message}” {file}:{line}', [
                 'message' => $e->getMessage(),
                 'file' => $e->getFile(),
@@ -220,14 +228,11 @@ class CodesService extends Component
     /**
      * Populates a Code by LineItem options and return the valid custom fields
      *
-     * @param \verbb\giftvoucher\elements\Code $code
-     * @param \craft\commerce\models\LineItem  $lineItem
      *
-     * @return array
      */
     public function populateCodeByLineItem(Code $code, LineItem $lineItem): array
     {
-        $settings = GiftVoucher::getInstance()->getSettings();
+        $settings = GiftVoucher::$plugin->getSettings();
 
         $validFields = [];
 
@@ -235,9 +240,8 @@ class CodesService extends Component
         $options = $lineItem->getOptions() ?? [];
 
         if ($fieldLayout = $code->getFieldLayout()) {
-            if ($fields = $fieldLayout->getFields()) {
-                /** @var \craft\base\Field $field */
-                foreach ($fields as $field){
+            if ($fields = $fieldLayout->getCustomFields()) {
+                foreach ($fields as $field) {
                     $fieldHandle = $field->handle;
 
                     if (isset($options[$fieldHandle])) {
@@ -253,10 +257,8 @@ class CodesService extends Component
 
     /**
      * Validate Line Items that are Vouchers based on required Field Layout Fields
-     *
-     * @param \yii\base\ModelEvent $event
      */
-    public function handleValidateLineItem(ModelEvent $event)
+    public function handleValidateLineItem(ModelEvent $event): void
     {
         /** @var LineItem $lineItem */
         $lineItem = $event->sender;
@@ -282,8 +284,8 @@ class CodesService extends Component
 
     public function generateCodeKey(): string
     {
-        $codeAlphabet = GiftVoucher::getInstance()->getSettings()->codeKeyCharacters;
-        $keyLength = GiftVoucher::getInstance()->getSettings()->codeKeyLength;
+        $codeAlphabet = GiftVoucher::$plugin->getSettings()->codeKeyCharacters;
+        $keyLength = GiftVoucher::$plugin->getSettings()->codeKeyLength;
 
         $codeKey = '';
 
@@ -294,9 +296,23 @@ class CodesService extends Component
         return $codeKey;
     }
 
-    public function matchCode($codeKey, &$error = '')
+    public function matchCode($codeKey, &$error = ''): bool
     {
         $code = Code::findOne(['codeKey' => $codeKey]);
+
+        if ($this->hasEventHandlers(self::EVENT_BEFORE_MATCH_CODE)) {
+            $event = new MatchCodeEvent([
+                'code' => $code,
+                'codeKey' => $codeKey,
+            ]);
+            $this->trigger(self::EVENT_BEFORE_MATCH_CODE, $event);
+
+            if (!empty($event->error)) {
+                $error = $event->error;
+
+                return false;
+            }
+        }
 
         // Check if valid
         if (!$code) {
@@ -305,7 +321,7 @@ class CodesService extends Component
             return false;
         }
 
-        // Check if has an amount left
+        // Check if voucher has an amount left
         if ($code->currentAmount <= 0) {
             $error = Craft::t('gift-voucher', 'Voucher code has no amount left');
 
@@ -313,7 +329,7 @@ class CodesService extends Component
         }
 
         // Check for expiry date
-        $today = new \DateTime();
+        $today = new DateTime();
         if ($code->expiryDate && $code->expiryDate->format('Ymd') < $today->format('Ymd')) {
             $error = Craft::t('gift-voucher', 'Voucher code is out of date');
 
@@ -323,7 +339,7 @@ class CodesService extends Component
         return true;
     }
 
-    public function handleChangedFieldLayout(ConfigEvent $event)
+    public function handleChangedFieldLayout(ConfigEvent $event): void
     {
         $data = $event->newValue;
 
@@ -344,9 +360,8 @@ class CodesService extends Component
         $fieldsService->saveLayout($layout);
     }
 
-    public function pruneDeletedField(FieldEvent $event)
+    public function pruneDeletedField($event): void
     {
-        /** @var Field $field */
         $field = $event->field;
         $fieldUid = $field->uid;
 
@@ -365,12 +380,12 @@ class CodesService extends Component
         }
     }
 
-    public function handleDeletedFieldLayout(ConfigEvent $event)
+    public function handleDeletedFieldLayout(ConfigEvent $event): void
     {
         Craft::$app->getFields()->deleteLayoutsByType(Code::class);
     }
 
-    public function saveFieldLayout()
+    public function saveFieldLayout(): void
     {
         $projectConfig = Craft::$app->getProjectConfig();
         $fieldLayoutUid = StringHelper::UUID();

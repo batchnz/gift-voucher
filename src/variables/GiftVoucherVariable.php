@@ -1,22 +1,23 @@
 <?php
-
 namespace verbb\giftvoucher\variables;
 
+use verbb\giftvoucher\GiftVoucher;
+use verbb\giftvoucher\elements\Code;
+use verbb\giftvoucher\elements\Voucher;
+use verbb\giftvoucher\elements\db\VoucherQuery;
+use verbb\giftvoucher\elements\db\CodeQuery;
+
 use Craft;
+use craft\elements\db\ElementQueryInterface;
+
+use craft\commerce\Plugin as Commerce;
 use craft\commerce\elements\Order;
 use craft\commerce\models\LineItem;
-use craft\commerce\Plugin as Commerce;
-use verbb\giftvoucher\elements\Code;
-use verbb\giftvoucher\elements\db\CodeQuery;
-use verbb\giftvoucher\elements\db\VoucherQuery;
-use verbb\giftvoucher\elements\Voucher;
-use verbb\giftvoucher\GiftVoucher;
 
 class GiftVoucherVariable
 {
     // Public Methods
     // =========================================================================
-
 
     public function getPlugin(): GiftVoucher
     {
@@ -55,27 +56,27 @@ class GiftVoucherVariable
         return $query;
     }
 
-    public function getVoucherCodes()
+    public function getVoucherCodes(): array
     {
         $cart = Commerce::getInstance()->getCarts()->getCart();
-        return GiftVoucher::getInstance()->getCodeStorage()->getCodeKeys($cart);
+        return GiftVoucher::$plugin->getCodeStorage()->getCodeKeys($cart);
     }
 
-    public function isVoucher(LineItem $lineItem)
+    public function isVoucher(LineItem $lineItem): bool
     {
         if ($lineItem->purchasable) {
-            return (bool) (get_class($lineItem->purchasable) === Voucher::class);
+            return $lineItem->purchasable::class === Voucher::class;
         }
 
         return false;
     }
 
-    public function isVoucherAdjustment($adjuster)
+    public function isVoucherAdjustment($adjuster): bool
     {
         return $adjuster->sourceSnapshot['codeKey'] ?? false;
     }
 
-    public function getPdfUrl(LineItem $lineItem)
+    public function getPdfUrl(LineItem $lineItem): ?string
     {
         if ($this->isVoucher($lineItem)) {
             $order = $lineItem->order;
@@ -86,7 +87,7 @@ class GiftVoucherVariable
         return null;
     }
 
-    public function getOrderPdfUrl(Order $order)
+    public function getOrderPdfUrl(Order $order): string
     {
         return GiftVoucher::$plugin->getPdf()->getPdfUrl($order);
     }

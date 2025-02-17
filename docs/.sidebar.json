@@ -5,7 +5,8 @@
         "children": [
             "get-started/installation-setup",
             "get-started/requirements",
-            "get-started/configuration"
+            "get-started/configuration",
+            "get-started/upgrading-from-v2"
         ]
     },
     {
@@ -18,7 +19,8 @@
             "feature-tour/redemptions",
             "feature-tour/custom-amounts",
             "feature-tour/pdf-vouchers",
-            "feature-tour/shipping-categories"
+            "feature-tour/shipping-categories",
+            "feature-tour/code-storage"
         ]
     },
     {
@@ -50,13 +52,6 @@
             "developers/voucher",
             "developers/code",
             "developers/events"
-        ]
-    },
-    {
-        "title": "Support",
-        "collapsable": false,
-        "children": [
-            "support/get-support"
         ]
     }
 ]

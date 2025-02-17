@@ -1,12 +1,11 @@
 <?php
 namespace verbb\giftvoucher\records;
 
+use craft\db\ActiveQuery;
 use craft\db\ActiveRecord;
 use craft\records\Site;
 
-use yii\db\ActiveQueryInterface;
-
-class VoucherTypeSiteRecord extends ActiveRecord
+class VoucherTypeSite extends ActiveRecord
 {
     // Public Methods
     // =========================================================================
@@ -16,12 +15,12 @@ class VoucherTypeSiteRecord extends ActiveRecord
         return '{{%giftvoucher_vouchertypes_sites}}';
     }
 
-    public function getVoucherType(): ActiveQueryInterface
+    public function getVoucherType(): ActiveQuery
     {
-        return $this->hasOne(VoucherTypeRecord::class, ['id', 'voucherTypeId']);
+        return $this->hasOne(VoucherType::class, ['id', 'voucherTypeId']);
     }
 
-    public function getSite(): ActiveQueryInterface
+    public function getSite(): ActiveQuery
     {
         return $this->hasOne(Site::class, ['id', 'siteId']);
     }

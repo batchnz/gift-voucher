@@ -3,31 +3,31 @@ namespace verbb\giftvoucher\elements\db;
 
 use verbb\giftvoucher\elements\Code;
 use verbb\giftvoucher\elements\Voucher;
-use verbb\giftvoucher\models\VoucherTypeModel;
+use verbb\giftvoucher\models\VoucherType;
 
 use craft\base\Element;
 use craft\db\Query;
 use craft\elements\db\ElementQuery;
-use craft\elements\User;
 use craft\helpers\ArrayHelper;
 use craft\helpers\Db;
 
 use DateTime;
-use yii\db\Connection;
 
 class CodeQuery extends ElementQuery
 {
     // Properties
     // =========================================================================
 
-    public $voucherId;
-    public $typeId;
-    public $lineItemId;
-    public $orderId;
-    public $codeKey;
-    public $originalAmount;
-    public $currentAmount;
-    public $expiryDate;
+    public mixed $voucherId = null;
+    public mixed $typeId = null;
+    public mixed $lineItemId = null;
+    public mixed $orderId = null;
+    public mixed $codeKey = null;
+    public mixed $originalAmount = null;
+    public mixed $currentAmount = null;
+    public mixed $expiryDate = null;
+
+    protected array $defaultOrderBy = ['giftvoucher_codes.dateCreated' => SORT_DESC];
 
 
     // Public Methods
@@ -63,7 +63,8 @@ class CodeQuery extends ElementQuery
         }
     }
 
-    public function voucher($value) {
+    public function voucher($value): static
+    {
         if ($value instanceof Voucher) {
             $this->voucherId = $value->id;
         } else if ($value !== null) {
@@ -79,9 +80,9 @@ class CodeQuery extends ElementQuery
         return $this;
     }
 
-    public function type($value)
+    public function type($value): static
     {
-        if ($value instanceof VoucherTypeModel) {
+        if ($value instanceof VoucherType) {
             $this->typeId = $value->id;
         } else if ($value !== null) {
             $this->typeId = (new Query())
@@ -96,72 +97,72 @@ class CodeQuery extends ElementQuery
         return $this;
     }
 
-    public function before($value)
+    public function before($value): static
     {
         if ($value instanceof DateTime) {
             $value = $value->format(DateTime::W3C);
         }
 
         $this->dateCreated = ArrayHelper::toArray($this->dateCreated);
-        $this->dateCreated[] = '<'.$value;
+        $this->dateCreated[] = '<' . $value;
 
         return $this;
     }
 
-    public function after($value)
+    public function after($value): static
     {
         if ($value instanceof DateTime) {
             $value = $value->format(DateTime::W3C);
         }
 
         $this->dateCreated = ArrayHelper::toArray($this->dateCreated);
-        $this->dateCreated[] = '>='.$value;
+        $this->dateCreated[] = '>=' . $value;
 
         return $this;
     }
 
-    public function typeId($value)
+    public function typeId($value): static
     {
         $this->typeId = $value;
 
         return $this;
     }
 
-    public function voucherId($value)
+    public function voucherId($value): static
     {
         $this->voucherId = $value;
 
         return $this;
     }
 
-    public function lineItemId($value)
+    public function lineItemId($value): static
     {
         $this->lineItemId = $value;
 
         return $this;
     }
 
-    public function orderId($value)
+    public function orderId($value): static
     {
         $this->orderId = $value;
 
         return $this;
     }
 
-    public function codeKey($value)
+    public function codeKey($value): static
     {
         $this->codeKey = $value;
 
         return $this;
     }
 
-    public function expiryDate($value)
+    public function expiryDate($value): static
     {
         $this->expiryDate = $value;
 
         return $this;
     }
-    
+
 
     // Protected Methods
     // =========================================================================
@@ -212,26 +213,19 @@ class CodeQuery extends ElementQuery
             $this->subQuery->andWhere(Db::parseDateParam('giftvoucher_codes.expiryDate', $this->expiryDate));
         }
 
-        if (!$this->orderBy) {
-            $this->orderBy = ['giftvoucher_codes.dateCreated' => SORT_DESC];
-        }
-
         return parent::beforePrepare();
     }
 
-    protected function statusCondition(string $status)
+    protected function statusCondition(string $status): mixed
     {
-        switch ($status) {
-            case Code::STATUS_ENABLED:
-                return [
-                    'elements.enabled' => true
-                ];
-            case Code::STATUS_DISABLED:
-                return [
-                    'elements.disabled' => true
-                ];
-            default:
-                return parent::statusCondition($status);
-        }
+        return match ($status) {
+            Code::STATUS_ENABLED => [
+                'elements.enabled' => true,
+            ],
+            Code::STATUS_DISABLED => [
+                'elements.disabled' => true,
+            ],
+            default => parent::statusCondition($status),
+        };
     }
 }

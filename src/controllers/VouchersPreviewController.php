@@ -7,14 +7,9 @@ use verbb\giftvoucher\helpers\VoucherHelper;
 
 use Craft;
 use craft\base\Element;
-use craft\errors\ElementNotFoundException;
-use craft\errors\MissingComponentException;
 use craft\helpers\UrlHelper;
 use craft\web\Controller;
 
-use yii\base\Exception;
-use yii\base\InvalidConfigException;
-use yii\web\BadRequestHttpException;
 use yii\web\HttpException;
 use yii\web\Response;
 use yii\web\ServerErrorHttpException;
@@ -24,7 +19,7 @@ class VouchersPreviewController extends Controller
     // Properties
     // =========================================================================
 
-    protected $allowAnonymous = true;
+    protected array|bool|int $allowAnonymous = true;
 
 
     // Public Methods
@@ -58,7 +53,7 @@ class VouchersPreviewController extends Controller
 
         // Create the token and redirect to the voucher URL with the token in place
         $token = Craft::$app->getTokens()->createToken([
-            'gift-voucher/vouchers-preview/view-shared-voucher', ['voucherId' => $voucher->id, 'siteId' => $siteId]
+            'gift-voucher/vouchers-preview/view-shared-voucher', ['voucherId' => $voucher->id, 'siteId' => $siteId],
         ]);
 
         $url = UrlHelper::urlWithToken($voucher->getUrl(), $token);
@@ -66,7 +61,7 @@ class VouchersPreviewController extends Controller
         return $this->redirect($url);
     }
 
-    public function actionViewSharedVoucher($voucherId, $site = null)
+    public function actionViewSharedVoucher($voucherId, $site = null): void
     {
         $this->requireToken();
 
@@ -77,11 +72,9 @@ class VouchersPreviewController extends Controller
         }
 
         $this->_showVoucher($voucher);
-
-        return null;
     }
 
-    public function actionSaveVoucher()
+    public function actionSaveVoucher(): ?Response
     {
         $this->requirePostRequest();
 
@@ -108,7 +101,7 @@ class VouchersPreviewController extends Controller
 
             // Send the category back to the template
             Craft::$app->getUrlManager()->setRouteParams([
-                'voucher' => $voucher
+                'voucher' => $voucher,
             ]);
 
             return null;
@@ -121,7 +114,7 @@ class VouchersPreviewController extends Controller
                 'title' => $voucher->title,
                 'status' => $voucher->getStatus(),
                 'url' => $voucher->getUrl(),
-                'cpEditUrl' => $voucher->getCpEditUrl()
+                'cpEditUrl' => $voucher->getCpEditUrl(),
             ]);
         }
 
@@ -130,7 +123,7 @@ class VouchersPreviewController extends Controller
         return $this->redirectToPostedUrl($voucher);
     }
 
-    protected function enforceVoucherPermissions(Voucher $voucher)
+    protected function enforceVoucherPermissions(Voucher $voucher): void
     {
         $this->requirePermission('giftVoucher-manageVoucherType:' . $voucher->getType()->uid);
     }
@@ -146,7 +139,7 @@ class VouchersPreviewController extends Controller
         $siteSettings = $voucherType->getSiteSettings();
 
         if (!isset($siteSettings[$voucher->siteId]) || !$siteSettings[$voucher->siteId]->hasUrls) {
-            throw new ServerErrorHttpException('The voucher ' . $voucher->id . ' doesn\'t have a URL for the site ' . $voucher->siteId . '.');
+            throw new ServerErrorHttpException('The voucher ' . $voucher->id . ' doesn‘t have a URL for the site ' . $voucher->siteId . '.');
         }
 
         $site = Craft::$app->getSites()->getSiteById($voucher->siteId);
@@ -165,7 +158,8 @@ class VouchersPreviewController extends Controller
         $this->getView()->getTwig()->disableStrictVariables();
 
         return $this->renderTemplate($siteSettings[$voucher->siteId]->template, [
-            'voucher' => $voucher
+            'voucher' => $voucher,
+            'product' => $voucher,
         ]);
     }
 
