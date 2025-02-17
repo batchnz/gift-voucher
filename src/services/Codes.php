@@ -8,7 +8,6 @@ use verbb\giftvoucher\adjusters\GiftVoucherAdjuster;
 use verbb\giftvoucher\elements\Code;
 use verbb\giftvoucher\elements\Voucher;
 use verbb\giftvoucher\events\MatchCodeEvent;
-use verbb\giftvoucher\events\PopulateCodeFromLineItemEvent;
 use verbb\giftvoucher\models\Redemption;
 
 use Craft;
