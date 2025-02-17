@@ -45,26 +45,6 @@ class Voucher extends Purchasable
 
     const MIN_CUSTOM_AMOUNT = 20;
 
-
-    // Properties
-    // =========================================================================
-
-    public $id;
-    public $typeId;
-    public $taxCategoryId;
-    public $shippingCategoryId;
-    public $postDate;
-    public $expiryDate;
-    public $sku;
-    public $price;
-    public $customAmount;
-    public $promotable = true;
-    public $availableForPurchase = true;
-
-    public const EVENT_BEFORE_CAPTURE_VOUCHER_SNAPSHOT = 'beforeCaptureVoucherSnapshot';
-    public const EVENT_AFTER_CAPTURE_VOUCHER_SNAPSHOT = 'afterCaptureVoucherSnapshot';
-
-
     // Static Methods
     // =========================================================================
 
