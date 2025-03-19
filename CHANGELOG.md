@@ -1,5 +1,62 @@
 # Changelog
 
+## 4.0.5 - 2025-03-05
+
+### Changed
+- Improve redemption querying performance.
+
+### Fixed
+- Fix `deleteRedemption` return value.
+
+## 4.0.4 - 2024-10-20
+
+### Fixed
+- Fix an error when creating custom line items.
+
+## 4.0.3 - 2024-09-07
+
+### Changed
+- Change “Share” button to “View” for vouchers, for consistency with Craft/Commerce.
+
+### Fixed
+- Fix missing `product` variable when previewing a voucher.
+- Fix an error when duplicating a voucher.
+- Fix saving a code with a decimal value being cast to an int.
+
+## 4.0.2 - 2024-07-21
+
+### Fixed
+- Fix an error when adding a custom-priced voucher to the cart.
+
+## 4.0.1 - 2024-07-10
+
+### Added
+- Add support for `orderSite` for PDF URLs.
+
+### Changed
+- Update English translations.
+- Switch session handler to use Craft’s Session helper.
+
+### Fixed
+- Fix an error when saving a new site.
+- Fix session-handling to check for console requests.
+- Fix vouchers always being re-saved when updating a site or force-applying project config.
+
+## 4.0.0 - 2024-05-27
+
+### Changed
+- Now requires PHP `8.2.0+`.
+- Now requires Craft `5.0.0+`.
+- Now requires Craft Commerce `5.0.0+`.
+
+## 3.0.15 - 2025-03-05
+
+### Changed
+- Improve redemption querying performance.
+
+### Fixed
+- Fix `deleteRedemption` return value.
+
 ## 3.0.14 - 2024-09-07
 
 ### Changed

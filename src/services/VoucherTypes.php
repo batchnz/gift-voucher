@@ -1,6 +1,7 @@
 <?php
 namespace verbb\giftvoucher\services;
 
+use verbb\giftvoucher\GiftVoucher;
 use verbb\giftvoucher\elements\Voucher;
 use verbb\giftvoucher\errors\VoucherTypeNotFoundException;
 use verbb\giftvoucher\events\VoucherTypeEvent;
@@ -122,7 +123,7 @@ class VoucherTypes extends Component
         }
 
         if ($runValidation && !$voucherType->validate()) {
-            Craft::info('Voucher type not saved due to validation error.', __METHOD__);
+            GiftVoucher::info('Voucher type not saved due to validation error.');
 
             return false;
         }
@@ -275,15 +276,10 @@ class VoucherTypes extends Component
                 if (!empty($siteData)) {
                     // Drop the old voucher URIs for any site settings that don't have URLs
                     if (!empty($sitesNowWithoutUrls)) {
-                        $db->createCommand()
-                            ->update(
-                                '{{%elements_sites}}',
-                                ['uri' => null],
-                                [
-                                    'elementId' => $voucherIds,
-                                    'siteId' => $sitesNowWithoutUrls,
-                                ])
-                            ->execute();
+                        Db::update('{{%elements_sites}}', ['uri' => null], [
+                            'elementId' => $voucherIds,
+                            'siteId' => $sitesNowWithoutUrls,
+                        ]);
                     } else if (!empty($sitesWithNewUriFormats)) {
                         foreach ($voucherIds as $voucherId) {
                             App::maxPowerCaptain();
@@ -438,7 +434,7 @@ class VoucherTypes extends Component
             $oldPrimarySiteUid = Db::uidById(Table::SITES, $event->oldPrimarySiteId);
             $existingVoucherTypeSettings = $projectConfig->get(self::CONFIG_VOUCHERTYPES_KEY);
 
-            if (!$projectConfig->getIsApplyingYamlChanges() && is_array($existingVoucherTypeSettings)) {
+            if (!$projectConfig->getIsApplyingExternalChanges() && is_array($existingVoucherTypeSettings)) {
                 foreach ($existingVoucherTypeSettings as $voucherTypeUid => $settings) {
                     $primarySiteSettings = $settings['siteSettings'][$oldPrimarySiteUid];
                     $configPath = self::CONFIG_VOUCHERTYPES_KEY . '.' . $voucherTypeUid . '.siteSettings.' . $event->site->uid;
@@ -448,7 +444,7 @@ class VoucherTypes extends Component
         }
     }
 
-    // Private methods
+    // Private Methods
     // =========================================================================
 
     private function _voucherTypes(): MemoizableArray

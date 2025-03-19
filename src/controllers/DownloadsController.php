@@ -25,21 +25,21 @@ class DownloadsController extends Controller
 
     public function actionPdf(): Response|string
     {
-        $request = Craft::$app->getRequest();
+        $code = [];
 
         $codes = [];
         $order = [];
         $lineItem = null;
 
-        $number = $request->getParam('number');
-        $option = $request->getParam('option', '');
-        $lineItemId = $request->getParam('lineItemId', '');
-        $codeId = $request->getParam('codeId', '');
+        $number = $this->request->getParam('number');
+        $option = $this->request->getParam('option', '');
+        $lineItemId = $this->request->getParam('lineItemId', '');
+        $codeId = $this->request->getParam('codeId', '');
 
-        $format = $request->getParam('format');
-        $attach = $request->getParam('attach');
+        $format = $this->request->getParam('format');
+        $attach = $this->request->getParam('attach');
 
-        $siteHandle = $request->getParam('site');
+        $siteHandle = $this->request->getParam('site');
         $site = Craft::$app->getSites()->getPrimarySite();
 
         if ($siteHandle) {

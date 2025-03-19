@@ -147,8 +147,7 @@ class VouchersController extends Controller
         $this->requirePostRequest();
 
         // Get the requested voucher
-        $request = Craft::$app->getRequest();
-        $oldVoucher = VoucherHelper::voucherFromPost($request);
+        $oldVoucher = VoucherHelper::voucherFromPost($this->request);
         $this->enforceVoucherPermissions($oldVoucher);
         $elementsService = Craft::$app->getElements();
 
@@ -164,7 +163,7 @@ class VouchersController extends Controller
                     /** @var Voucher $clone */
                     $clone = $e->element;
 
-                    if ($request->getAcceptsJson()) {
+                    if ($this->request->getAcceptsJson()) {
                         return $this->asJson([
                             'success' => false,
                             'errors' => $clone->getErrors(),
@@ -189,7 +188,7 @@ class VouchersController extends Controller
             }
 
             // Now populate the rest of it from the post data
-            VoucherHelper::populateVoucherFromPost($voucher, $request);
+            VoucherHelper::populateVoucherFromPost($voucher, $this->request);
 
             // Save the voucher (finally!)
             if ($voucher->enabled && $voucher->enabledForSite) {
@@ -208,7 +207,7 @@ class VouchersController extends Controller
             if (!$success) {
                 $transaction->rollBack();
 
-                if ($request->getAcceptsJson()) {
+                if ($this->request->getAcceptsJson()) {
                     return $this->asJson([
                         'success' => false,
                         'errors' => $voucher->getErrors(),
@@ -235,7 +234,7 @@ class VouchersController extends Controller
             throw $e;
         }
 
-        if ($request->getAcceptsJson()) {
+        if ($this->request->getAcceptsJson()) {
             return $this->asJson([
                 'success' => true,
                 'id' => $voucher->id,

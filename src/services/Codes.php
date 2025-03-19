@@ -19,6 +19,7 @@ use craft\helpers\StringHelper;
 use craft\models\FieldLayout;
 
 use craft\commerce\elements\Order;
+use craft\commerce\enums\LineItemType;
 use craft\commerce\models\LineItem;
 
 use yii\base\BaseObject;
@@ -67,9 +68,9 @@ class Codes extends Component
 
                 if ($purchasable && $purchasable instanceof Voucher) {
                     for ($i = 0; $i < $quantity; $i++) {
-                        GiftVoucher::log(Craft::t('app', 'Adding {id} to code storage', [
+                        GiftVoucher::info('Adding {id} to code storage', [
                             'id' => $lineItem->id,
-                        ]));
+                        ]);
 
                         $success = GiftVoucher::$plugin->getCodes()->codeVoucherByOrder($purchasable, $order, $lineItem);
 
@@ -134,7 +135,7 @@ class Codes extends Component
                     'id' => $order->id,
                 ]);
 
-                GiftVoucher::log($error);
+                GiftVoucher::info($error);
             }
         } catch (Throwable $e) {
             $error = Craft::t('app', 'Unable to complete gift voucher order: “{message}” {file}:{line}', [
@@ -207,9 +208,9 @@ class Codes extends Component
             $success = Craft::$app->getElements()->saveElement($code, false);
 
             if (!$success) {
-                GiftVoucher::error(Craft::t('app', 'Unable to save code: “{errors}”.', [
+                GiftVoucher::error('Unable to save code: “{errors}”.', [
                     'errors' => Json::encode($code->getErrors()),
-                ]));
+                ]);
             }
         } catch (Throwable $e) {
             $error = Craft::t('app', 'Unable to save voucher code for order: “{message}” {file}:{line}', [
@@ -261,6 +262,11 @@ class Codes extends Component
     {
         /** @var LineItem $lineItem */
         $lineItem = $event->sender;
+
+        if ($lineItem->type === LineItemType::Custom) {
+            return;
+        }
+
         $purchasable = $lineItem->getPurchasable();
 
         // make sure it's a Voucher

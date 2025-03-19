@@ -91,9 +91,7 @@ class CodesController extends Controller
     {
         $this->requirePostRequest();
 
-        $request = Craft::$app->getRequest();
-
-        $codeId = $request->getBodyParam('codeId');
+        $codeId = $this->request->getBodyParam('codeId');
 
         if ($codeId) {
             $code = Craft::$app->getElements()->getElementById($codeId, Code::class);
@@ -105,7 +103,7 @@ class CodesController extends Controller
             $code = new Code();
         }
 
-        $voucherIds = $request->getBodyParam('voucher');
+        $voucherIds = $this->request->getBodyParam('voucher');
 
         if (is_array($voucherIds) && !empty($voucherIds)) {
             $code->voucherId = reset($voucherIds);
@@ -113,12 +111,12 @@ class CodesController extends Controller
             $code->voucherId = null;
         }
 
-        $code->id = (int)$request->getBodyParam('codeId');
-        $code->enabled = (bool)$request->getBodyParam('enabled');
-        $code->originalAmount = (float)$request->getBodyParam('originalAmount');
-        $code->currentAmount = (float)$request->getBodyParam('currentAmount');
-        $code->expiryDate = (($date = $request->getParam('expiryDate')) !== false ? (DateTimeHelper::toDateTime($date) ?: null) : $code->expiryDate);
-        $redemptions = $request->getBodyParam('redemptions') ?: [];
+        $code->id = (int)$this->request->getBodyParam('codeId');
+        $code->enabled = (bool)$this->request->getBodyParam('enabled');
+        $code->originalAmount = (float)$this->request->getBodyParam('originalAmount');
+        $code->currentAmount = (float)$this->request->getBodyParam('currentAmount');
+        $code->expiryDate = (($date = $this->request->getParam('expiryDate')) !== false ? (DateTimeHelper::toDateTime($date) ?: null) : $code->expiryDate);
+        $redemptions = $this->request->getBodyParam('redemptions') ?: [];
 
         foreach ($redemptions as $redemptionId => $redemption) {
             $datePaid = ($date = DateTimeHelper::toDateTime($redemption['datePaid']))
@@ -148,7 +146,7 @@ class CodesController extends Controller
         }
 
         // populate fields
-        $fieldsLocation = $request->getParam('fieldsLocation', 'fields');
+        $fieldsLocation = $this->request->getParam('fieldsLocation', 'fields');
         $code->setFieldValuesFromRequest($fieldsLocation);
 
         // validate fields
@@ -209,21 +207,20 @@ class CodesController extends Controller
     {
         $this->requirePostRequest();
 
-        $request = Craft::$app->getRequest();
         $voucherId = null;
         $errors = [];
-        $amount = (int)$request->getBodyParam('amount');
-        $voucherAmount = (float)$request->getBodyParam('voucherAmount');
+        $amount = (int)$this->request->getBodyParam('amount');
+        $voucherAmount = (float)$this->request->getBodyParam('voucherAmount');
         $voucher = null;
 
-        $voucherIds = $request->getBodyParam('voucher');
+        $voucherIds = $this->request->getBodyParam('voucher');
 
         if (!empty($voucherIds) && is_array($voucherIds)) {
             $voucherId = reset($voucherIds);
             $voucher = GiftVoucher::$plugin->getVouchers()->getVoucherById($voucherId);
         }
 
-        $expiryDate = $request->getBodyParam('expiryDate') ? (DateTimeHelper::toDateTime($request->getBodyParam('expiryDate')) ?: null) : null;
+        $expiryDate = $this->request->getBodyParam('expiryDate') ? (DateTimeHelper::toDateTime($this->request->getBodyParam('expiryDate')) ?: null) : null;
 
         if (!($amount > 0)) {
             $errors['amount'][] = Craft::t('gift-voucher', 'You should at least generate one voucher code.');
